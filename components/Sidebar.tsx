@@ -8,16 +8,18 @@ import {
   ShoppingCart,
   UserPlus,
   Settings,
+  FileText,
   LogOut,
   TrendingUp,
   ChevronRight,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/vendas',     label: 'Vendas',      icon: ShoppingCart    },
-  { href: '/cadastro',   label: 'Cadastro',    icon: UserPlus        },
-  { href: '/parametros', label: 'Parâmetros',  icon: Settings        },
+  { href: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
+  { href: '/vendas',       label: 'Vendas',        icon: ShoppingCart    },
+  { href: '/contracheque', label: 'Contracheque',  icon: FileText        },
+  { href: '/cadastro',     label: 'Cadastro',      icon: UserPlus        },
+  { href: '/parametros',   label: 'Parâmetros',    icon: Settings        },
 ]
 
 export default function Sidebar({ userName, userRole }: { userName: string; userRole: string }) {
