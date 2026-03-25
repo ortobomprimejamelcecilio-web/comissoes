@@ -148,7 +148,7 @@ function VendedorPanel({ dados, diaAtual, diasNoMes, mes, ano }: {
               <BarChart data={vendasPorDia} barSize={6}>
                 <XAxis dataKey="dia" tick={{ fontSize: 10 }} interval={6} />
                 <YAxis hide />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} labelFormatter={l => `Dia ${l}`} />
+                <Tooltip formatter={(v) => formatCurrency(v as number)} labelFormatter={l => `Dia ${l}`} />
                 <Bar dataKey="valor" fill="#2563eb" radius={[3,3,0,0]} />
               </BarChart>
             </ResponsiveContainer>
