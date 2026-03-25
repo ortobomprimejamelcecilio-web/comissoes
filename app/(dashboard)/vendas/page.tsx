@@ -2,11 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import VendasClient from '@/components/VendasClient'
 import { calcularBeneficio } from '@/lib/commission'
 
-const PARAMS_PADRAO = (limiteDesconto: number, mes: number, ano: number) => ({
-  meta: 60000, salario_base: 1620, beneficio: calcularBeneficio(mes, ano),
-  perc_comissao_base: 0.02, perc_comissao_extra: 0.01,
-  perc_premiacao: 0.01, limite_desconto: limiteDesconto,
-})
+const VENDEDORES_CONFIG = [
+  { nome: 'Robson Brito',  limiteDesconto: 0.15 },
+  { nome: 'Regiane Brito', limiteDesconto: 0.12 },
+]
 
 export default async function VendasPage() {
   const supabase = await createClient()
@@ -15,27 +14,15 @@ export default async function VendasPage() {
   const mes = now.getMonth() + 1
   const ano = now.getFullYear()
 
-  // Buscar todos os vendedores cadastrados
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('id, nome')
-    .order('nome', { ascending: true })
+  const beneficioMes = calcularBeneficio(mes, ano)
 
-  const vendedoresProfiles = profiles ?? []
-  const ids = vendedoresProfiles.map(p => p.id).filter(Boolean)
-
-  // Buscar todas as vendas dos vendedores no mês
-  const { data: vendas } = ids.length
-    ? await supabase.from('vendas').select('*').in('vendedor_id', ids).eq('mes', mes).eq('ano', ano).order('numero', { ascending: true })
-    : { data: [] }
-
-  // Buscar parametros de cada vendedor
-  const paramsMap: Record<string, Record<string, number>> = {}
-  if (ids.length) {
-    const { data: todosParams } = await supabase
-      .from('parametros').select('*').in('vendedor_id', ids).eq('mes', mes).eq('ano', ano)
-    for (const p of todosParams ?? []) paramsMap[p.vendedor_id] = p
-  }
+  // Buscar todas as vendas do mês (qualquer vendedor_nome)
+  const { data: vendas } = await supabase
+    .from('vendas')
+    .select('*')
+    .eq('mes', mes)
+    .eq('ano', ano)
+    .order('numero', { ascending: true })
 
   // Buscar próximo número global
   const { data: ultimaVenda } = await supabase
@@ -47,17 +34,17 @@ export default async function VendasPage() {
 
   const proximoNumero = (ultimaVenda?.numero ?? 114) + 1
 
-  const beneficioMes = calcularBeneficio(mes, ano)
-
-  // Limite padrão por nome (Robson 15%, todos os outros 12%)
-  const limiteDefault = (nome: string) => nome === 'Robson Brito' ? 0.15 : 0.12
-
-  const vendedores = vendedoresProfiles.map(p => ({
-    id: p.id,
-    nome: p.nome,
+  // Montar vendedores com parâmetros padrão (sem depender de profiles)
+  const vendedores = VENDEDORES_CONFIG.map(v => ({
+    nome: v.nome,
     parametros: {
-      ...(paramsMap[p.id] ?? PARAMS_PADRAO(limiteDefault(p.nome), mes, ano)),
+      meta: 60000,
+      salario_base: 1620,
       beneficio: beneficioMes,
+      perc_comissao_base: 0.02,
+      perc_comissao_extra: 0.01,
+      perc_premiacao: 0.01,
+      limite_desconto: v.limiteDesconto,
     },
   }))
 

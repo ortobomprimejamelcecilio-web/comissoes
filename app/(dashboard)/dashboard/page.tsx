@@ -2,20 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import DashboardClient from '@/components/DashboardClient'
 import { calcularBeneficio } from '@/lib/commission'
 
-const PARAMS_PADRAO = (limiteDesconto: number, mes: number, ano: number) => ({
-  meta: 60000,
-  salario_base: 1620,
-  beneficio: calcularBeneficio(mes, ano),
-  perc_comissao_base: 0.02,
-  perc_comissao_extra: 0.01,
-  perc_premiacao: 0.01,
-  limite_desconto: limiteDesconto,
-})
-
-const LIMITES: Record<string, number> = {
-  'Robson Brito': 0.15,
-  'Regiane Brito': 0.12,
-}
+const VENDEDORES_CONFIG = [
+  { nome: 'Robson Brito',  limiteDesconto: 0.15 },
+  { nome: 'Regiane Brito', limiteDesconto: 0.12 },
+]
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -24,31 +14,32 @@ export default async function DashboardPage() {
   const mes = now.getMonth() + 1
   const ano = now.getFullYear()
 
-  // Buscar todos os vendedores cadastrados
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('id, nome')
-    .order('nome', { ascending: true })
-
-  const vendedoresProfiles = profiles ?? []
   const beneficioMes = calcularBeneficio(mes, ano)
 
-  const fetchVendedor = async (id: string, nome: string) => {
-    const [{ data: vendas }, { data: params }] = await Promise.all([
-      supabase.from('vendas').select('*').eq('vendedor_id', id).eq('mes', mes).eq('ano', ano).order('data_venda', { ascending: true }),
-      supabase.from('parametros').select('*').eq('vendedor_id', id).eq('mes', mes).eq('ano', ano).single(),
-    ])
-    const limite = LIMITES[nome] ?? 0.12
-    return {
-      nome,
-      vendas: vendas ?? [],
-      parametros: { ...(params ?? PARAMS_PADRAO(limite, mes, ano)), beneficio: beneficioMes },
-    }
-  }
+  // Buscar todas as vendas do mês
+  const { data: todasVendas } = await supabase
+    .from('vendas')
+    .select('*')
+    .eq('mes', mes)
+    .eq('ano', ano)
+    .order('data_venda', { ascending: true })
 
-  const dadosVendedores = await Promise.all(
-    vendedoresProfiles.map(v => fetchVendedor(v.id, v.nome))
-  )
+  // Montar dados por vendedor
+  const dadosVendedores = VENDEDORES_CONFIG.map(v => ({
+    nome: v.nome,
+    vendas: (todasVendas ?? [])
+      .filter(x => x.vendedor_nome === v.nome)
+      .map(x => ({ valor: x.valor_venda, precoTabela: x.preco_tabela })),
+    parametros: {
+      meta: 60000,
+      salario_base: 1620,
+      beneficio: beneficioMes,
+      perc_comissao_base: 0.02,
+      perc_comissao_extra: 0.01,
+      perc_premiacao: 0.01,
+      limite_desconto: v.limiteDesconto,
+    },
+  }))
 
   return (
     <DashboardClient

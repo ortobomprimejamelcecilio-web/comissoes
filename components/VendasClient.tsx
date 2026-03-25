@@ -7,19 +7,30 @@ import { Plus, Trash2, TrendingUp, CheckCircle, XCircle, AlertTriangle, User } f
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
+const VENDEDORES_CONFIG = [
+  { nome: 'Robson Brito',  limiteDesconto: 0.15 },
+  { nome: 'Regiane Brito', limiteDesconto: 0.12 },
+]
+
 interface Venda {
-  id: number; numero: number; numero_pedido: string | null; cliente: string; canal: string
-  data_venda: string; valor_venda: number; preco_tabela: number
-  comissao_base: number; comissao_extra: number; perc_desconto: number
-  vendedor_id: string
+  id: number
+  numero: number
+  numero_pedido: string | null
+  vendedor_nome: string
+  cliente: string
+  canal: string
+  data_venda: string
+  valor_venda: number
+  preco_tabela: number
 }
+
 interface Parametros {
   meta: number; salario_base: number; beneficio: number
   perc_comissao_base: number; perc_comissao_extra: number
   perc_premiacao: number; limite_desconto: number
 }
+
 interface VendedorInfo {
-  id: string
   nome: string
   parametros: Parametros
 }
@@ -27,7 +38,8 @@ interface VendedorInfo {
 export default function VendasClient({ vendasIniciais, vendedores, mes, ano, proximoNumero }: {
   vendasIniciais: Venda[]
   vendedores: VendedorInfo[]
-  mes: number; ano: number
+  mes: number
+  ano: number
   proximoNumero: number
 }) {
   const [vendas, setVendas] = useState<Venda[]>(vendasIniciais)
@@ -37,7 +49,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
   const [filtroVendedor, setFiltroVendedor] = useState<string>('todos')
 
   const [form, setForm] = useState({
-    vendedor_id: vendedores[0]?.id ?? '',
+    vendedor_nome: VENDEDORES_CONFIG[0].nome,
     cliente: '',
     canal: 'LOJA',
     data_venda: format(new Date(), 'yyyy-MM-dd'),
@@ -50,11 +62,10 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
   const diaAtual = hoje.getMonth() + 1 === mes && hoje.getFullYear() === ano ? hoje.getDate() : 30
   const diasNoMes = new Date(ano, mes, 0).getDate()
 
-  // Vendedor selecionado no formulário
-  const vendedorSelecionado = vendedores.find(v => v.id === form.vendedor_id) ?? vendedores[0]
-  const limiteAtual = vendedorSelecionado?.parametros.limite_desconto ?? 0.12
+  // Limite do vendedor selecionado no formulário
+  const limiteAtual = VENDEDORES_CONFIG.find(v => v.nome === form.vendedor_nome)?.limiteDesconto ?? 0.12
 
-  // Preview de comissão com limite do vendedor selecionado
+  // Preview de comissão
   const preview = useMemo(() => {
     const val = parseFloat(form.valor_venda)
     const tab = parseFloat(form.preco_tabela)
@@ -65,60 +76,34 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
   // Vendas filtradas para exibição
   const vendasFiltradas = useMemo(() => {
     if (filtroVendedor === 'todos') return vendas
-    return vendas.filter(v => v.vendedor_id === filtroVendedor)
+    return vendas.filter(v => v.vendedor_nome === filtroVendedor)
   }, [vendas, filtroVendedor])
 
-  // Resumo financeiro das vendas filtradas
+  // Resumo financeiro
   const resumo = useMemo(() => {
-    const params = filtroVendedor === 'todos'
-      ? { limite_desconto: 0.12 } // fallback, não usado para filtro geral
-      : (vendedores.find(v => v.id === filtroVendedor)?.parametros ?? { limite_desconto: 0.12 })
-
-    let totalVendas = 0, totalComissoes = 0
-    const vendasCalc = vendasFiltradas.map(v => ({ valor: v.valor_venda, precoTabela: v.preco_tabela }))
-    totalVendas = vendasCalc.reduce((s, v) => s + v.valor, 0)
-
     if (filtroVendedor !== 'todos') {
-      const r = calcularMes(vendasCalc, diaAtual, diasNoMes, params)
-      return {
-        totalVendas: r.totalVendas,
-        totalComissoes: r.totalComissoes,
-        totalLiquido: r.totalLiquido,
-        inss: r.inss,
-        salarioBase: r.salarioBase,
-        beneficio: r.beneficio,
-        percAtingimento: r.totalVendas / (params as Parametros).meta,
-        faltaMeta: r.faltaMeta,
-        meta: (params as Parametros).meta,
-      }
+      const params = vendedores.find(v => v.nome === filtroVendedor)?.parametros
+        ?? { meta: 60000, salario_base: 1620, beneficio: 0, perc_comissao_base: 0.02, perc_comissao_extra: 0.01, perc_premiacao: 0.01, limite_desconto: 0.12 }
+      const vc = vendasFiltradas.map(v => ({ valor: v.valor_venda, precoTabela: v.preco_tabela }))
+      const r = calcularMes(vc, diaAtual, diasNoMes, params)
+      return { ...r, meta: params.meta }
     }
 
-    // Totais combinados
-    let totalComissoesGeral = 0, totalLiquidoGeral = 0, inssGeral = 0
+    // Total geral dos 2 vendedores
+    let totalVendas = 0, totalComissoes = 0, totalLiquido = 0, inss = 0
     for (const v of vendedores) {
-      const vc = vendas.filter(x => x.vendedor_id === v.id).map(x => ({ valor: x.valor_venda, precoTabela: x.preco_tabela }))
+      const vc = vendas.filter(x => x.vendedor_nome === v.nome).map(x => ({ valor: x.valor_venda, precoTabela: x.preco_tabela }))
       const r = calcularMes(vc, diaAtual, diasNoMes, v.parametros)
-      totalComissoesGeral += r.totalComissoes
-      totalLiquidoGeral += r.totalLiquido
-      inssGeral += r.inss
+      totalVendas += r.totalVendas
+      totalComissoes += r.totalComissoes
+      totalLiquido += r.totalLiquido
+      inss += r.inss
     }
-
-    return {
-      totalVendas,
-      totalComissoes: totalComissoesGeral,
-      totalLiquido: totalLiquidoGeral,
-      inss: inssGeral,
-      salarioBase: 0,
-      beneficio: 0,
-      percAtingimento: 0,
-      faltaMeta: 0,
-      meta: 0,
-    }
+    return { totalVendas, totalComissoes, totalLiquido, inss, salarioBase: 0, beneficio: 0, percAtingimento: 0, faltaMeta: 0, meta: 0 }
   }, [vendasFiltradas, filtroVendedor, vendedores, vendas, diaAtual, diasNoMes])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.vendedor_id) { setErro('Selecione o vendedor.'); return }
     setLoading(true)
     setErro('')
 
@@ -126,7 +111,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        vendedor_id: form.vendedor_id,
+        vendedor_nome: form.vendedor_nome,
         cliente: form.cliente,
         canal: form.canal,
         data_venda: form.data_venda,
@@ -154,8 +139,6 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
     const res = await fetch(`/api/vendas?id=${id}`, { method: 'DELETE' })
     if (res.ok) setVendas(prev => prev.filter(v => v.id !== id))
   }
-
-  const nomeVendedor = (id: string) => vendedores.find(v => v.id === id)?.nome ?? '—'
 
   return (
     <div className="space-y-6">
@@ -192,15 +175,15 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
             <div className="col-span-2 lg:col-span-1">
               <label className="block text-xs font-medium text-gray-600 mb-1">Vendedor *</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <select
                   required
-                  value={form.vendedor_id}
-                  onChange={e => setForm(p => ({ ...p, vendedor_id: e.target.value }))}
-                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white appearance-none"
+                  value={form.vendedor_nome}
+                  onChange={e => setForm(p => ({ ...p, vendedor_nome: e.target.value }))}
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
-                  {vendedores.map(v => (
-                    <option key={v.id} value={v.id}>{v.nome}</option>
+                  {VENDEDORES_CONFIG.map(v => (
+                    <option key={v.nome} value={v.nome}>{v.nome}</option>
                   ))}
                 </select>
               </div>
@@ -331,12 +314,12 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
 
       {/* Filtro por vendedor */}
       <div className="flex gap-2">
-        {[{ id: 'todos', nome: 'Todos' }, ...vendedores].map(v => (
+        {[{ nome: 'Todos' }, ...VENDEDORES_CONFIG].map(v => (
           <button
-            key={v.id}
-            onClick={() => setFiltroVendedor(v.id)}
+            key={v.nome}
+            onClick={() => setFiltroVendedor(v.nome === 'Todos' ? 'todos' : v.nome)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              filtroVendedor === v.id
+              (v.nome === 'Todos' ? filtroVendedor === 'todos' : filtroVendedor === v.nome)
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -350,7 +333,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-5 border-b border-gray-100">
           <h2 className="font-semibold text-gray-800">
-            {filtroVendedor === 'todos' ? 'Todas as Vendas' : nomeVendedor(filtroVendedor)} — {vendasFiltradas.length} registro{vendasFiltradas.length !== 1 ? 's' : ''}
+            {filtroVendedor === 'todos' ? 'Todas as Vendas' : filtroVendedor} — {vendasFiltradas.length} registro{vendasFiltradas.length !== 1 ? 's' : ''}
           </h2>
         </div>
 
@@ -372,8 +355,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
               </thead>
               <tbody>
                 {vendasFiltradas.map((v, i) => {
-                  const vendInfo = vendedores.find(x => x.id === v.vendedor_id)
-                  const limite = vendInfo?.parametros.limite_desconto ?? 0.12
+                  const limite = VENDEDORES_CONFIG.find(x => x.nome === v.vendedor_nome)?.limiteDesconto ?? 0.12
                   const calc = calcularComissaoVenda(v.valor_venda, v.preco_tabela, limite)
                   const descOk = calc.percDesconto < limite
                   return (
@@ -384,9 +366,9 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                       </td>
                       <td className="px-3 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${
-                          vendInfo?.nome === 'Robson Brito' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'
+                          v.vendedor_nome === 'Robson Brito' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'
                         }`}>
-                          {vendInfo?.nome.split(' ')[0] ?? '—'}
+                          {v.vendedor_nome.split(' ')[0]}
                         </span>
                       </td>
                       <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
@@ -433,7 +415,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                   <td colSpan={2} className="px-3 py-3 text-gray-400 text-xs">—</td>
                   <td className="px-3 py-3 text-center text-xs text-gray-500">
                     {vendasFiltradas.filter(v => {
-                      const lim = vendedores.find(x => x.id === v.vendedor_id)?.parametros.limite_desconto ?? 0.12
+                      const lim = VENDEDORES_CONFIG.find(x => x.nome === v.vendedor_nome)?.limiteDesconto ?? 0.12
                       return calcularComissaoVenda(v.valor_venda, v.preco_tabela, lim).percDesconto < lim
                     }).length} ok
                   </td>

@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     .from('vendas')
     .select('*')
     .eq('vendedor_id', user.id)
-    .order('data_venda', { ascending: false })
+    .order('numero', { ascending: true })
 
   if (mes) query = query.eq('mes', parseInt(mes))
   if (ano) query = query.eq('ano', parseInt(ano))
@@ -31,19 +31,28 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const body = await request.json()
-  const { cliente, canal, data_venda, valor_venda, preco_tabela, numero, numero_pedido, vendedor_id } = body
+  const { cliente, canal, data_venda, valor_venda, preco_tabela, numero, numero_pedido, vendedor_nome } = body
 
   // Extrai mês/ano direto da string para evitar bug de fuso horário UTC vs BR
   const [anoStr, mesStr] = data_venda.split('-')
   const mes = parseInt(mesStr)
   const ano = parseInt(anoStr)
 
-  // Usa o vendedor_id enviado (quando admin registra por outro vendedor) ou o próprio usuário
-  const idVendedor = vendedor_id ?? user.id
-
   const { data, error } = await supabase
     .from('vendas')
-    .insert({ cliente, canal, data_venda, valor_venda, preco_tabela, numero, numero_pedido: numero_pedido || null, mes, ano, vendedor_id: idVendedor })
+    .insert({
+      cliente,
+      canal,
+      data_venda,
+      valor_venda,
+      preco_tabela,
+      numero,
+      numero_pedido: numero_pedido || null,
+      mes,
+      ano,
+      vendedor_id: user.id,
+      vendedor_nome: vendedor_nome ?? 'Robson Brito',
+    })
     .select()
     .single()
 
