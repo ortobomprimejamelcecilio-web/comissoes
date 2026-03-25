@@ -53,7 +53,13 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
 
     if (error) {
-      setErro('Email ou senha incorretos. Tente novamente.')
+      if (error.message.includes('Email not confirmed')) {
+        setErro('Email ainda não confirmado. Desative a confirmação no Supabase ou confirme o email.')
+      } else if (error.message.includes('Invalid login credentials')) {
+        setErro('Email ou senha incorretos. Tente novamente.')
+      } else {
+        setErro('Erro ao entrar: ' + error.message)
+      }
     } else {
       router.push('/dashboard')
       router.refresh()
@@ -78,7 +84,7 @@ export default function LoginPage() {
 
     setLoading(true)
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: cadEmail,
       password: cadSenha,
       options: {
@@ -87,11 +93,18 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setErro(error.message === 'User already registered'
-        ? 'Este email já está cadastrado.'
-        : 'Erro ao criar conta. Tente novamente.')
+      if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+        setErro('Este email já está cadastrado. Tente fazer login.')
+      } else {
+        setErro('Erro ao criar conta: ' + error.message)
+      }
+    } else if (data.session) {
+      // Confirmação desativada — já entra direto no dashboard
+      router.push('/dashboard')
+      router.refresh()
     } else {
-      setSucesso('Conta criada! Verifique seu email para confirmar o cadastro, depois faça login.')
+      // Confirmação ativada — pede para confirmar email
+      setSucesso('Conta criada! Confirme seu email e depois faça login.')
       setCadNome('')
       setCadEmail('')
       setCadSenha('')
