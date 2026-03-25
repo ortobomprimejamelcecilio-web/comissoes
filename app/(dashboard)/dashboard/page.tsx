@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import DashboardClient from '@/components/DashboardClient'
+import { calcularBeneficio } from '@/lib/commission'
 
-const PARAMS_PADRAO = (limiteDesconto: number) => ({
+const PARAMS_PADRAO = (limiteDesconto: number, mes: number, ano: number) => ({
   meta: 60000,
   salario_base: 1620,
-  beneficio: 450,
+  beneficio: calcularBeneficio(mes, ano),
   perc_comissao_base: 0.02,
   perc_comissao_extra: 0.01,
   perc_premiacao: 0.01,
@@ -34,10 +35,12 @@ export default async function DashboardPage() {
       supabase.from('vendas').select('*').eq('vendedor_id', id).eq('mes', mes).eq('ano', ano).order('data_venda', { ascending: true }),
       supabase.from('parametros').select('*').eq('vendedor_id', id).eq('mes', mes).eq('ano', ano).single(),
     ])
+    const beneficioMes = calcularBeneficio(mes, ano)
     return {
       nome,
       vendas: vendas ?? [],
-      parametros: params ?? PARAMS_PADRAO(LIMITES[nome] ?? 0.12),
+      // sempre sobrescreve o benefício com o cálculo de dias úteis
+      parametros: { ...(params ?? PARAMS_PADRAO(LIMITES[nome] ?? 0.12, mes, ano)), beneficio: beneficioMes },
     }
   }
 
@@ -45,8 +48,8 @@ export default async function DashboardPage() {
   const regiane = vendedores?.find(v => v.nome === 'Regiane Brito')
 
   const [dadosRobson, dadosRegiane] = await Promise.all([
-    robson ? fetchVendedor(robson.id, 'Robson Brito') : Promise.resolve({ nome: 'Robson Brito', vendas: [], parametros: PARAMS_PADRAO(0.15) }),
-    regiane ? fetchVendedor(regiane.id, 'Regiane Brito') : Promise.resolve({ nome: 'Regiane Brito', vendas: [], parametros: PARAMS_PADRAO(0.12) }),
+    robson ? fetchVendedor(robson.id, 'Robson Brito') : Promise.resolve({ nome: 'Robson Brito', vendas: [], parametros: PARAMS_PADRAO(0.15, mes, ano) }),
+    regiane ? fetchVendedor(regiane.id, 'Regiane Brito') : Promise.resolve({ nome: 'Regiane Brito', vendas: [], parametros: PARAMS_PADRAO(0.12, mes, ano) }),
   ])
 
   return (

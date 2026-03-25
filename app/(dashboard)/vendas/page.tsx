@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import VendasClient from '@/components/VendasClient'
+import { calcularBeneficio } from '@/lib/commission'
 
-const PARAMS_PADRAO = (limiteDesconto: number) => ({
-  meta: 60000, salario_base: 1620, beneficio: 450,
+const PARAMS_PADRAO = (limiteDesconto: number, mes: number, ano: number) => ({
+  meta: 60000, salario_base: 1620, beneficio: calcularBeneficio(mes, ano),
   perc_comissao_base: 0.02, perc_comissao_extra: 0.01,
   perc_premiacao: 0.01, limite_desconto: limiteDesconto,
 })
@@ -50,16 +51,18 @@ export default async function VendasPage() {
 
   const proximoNumero = (ultimaVenda?.numero ?? 114) + 1
 
+  const beneficioMes = calcularBeneficio(mes, ano)
+
   const vendedores = [
     {
       id: robsonId,
       nome: 'Robson Brito',
-      parametros: paramsRobson ?? PARAMS_PADRAO(0.15),
+      parametros: { ...(paramsRobson ?? PARAMS_PADRAO(0.15, mes, ano)), beneficio: beneficioMes },
     },
     {
       id: regianeId,
       nome: 'Regiane Brito',
-      parametros: paramsRegiane ?? PARAMS_PADRAO(0.12),
+      parametros: { ...(paramsRegiane ?? PARAMS_PADRAO(0.12, mes, ano)), beneficio: beneficioMes },
     },
   ]
 

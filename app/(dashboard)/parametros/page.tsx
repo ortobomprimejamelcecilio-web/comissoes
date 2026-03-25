@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { formatCurrency } from '@/lib/commission'
+import { useState, useEffect, useMemo } from 'react'
+import { formatCurrency, calcularDiasUteis, calcularBeneficio } from '@/lib/commission'
 import { Save, RefreshCw } from 'lucide-react'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -17,12 +17,15 @@ export default function ParametrosPage() {
   const [form, setForm] = useState({
     meta: 60000,
     salario_base: 1620,
-    beneficio: 450,
     perc_comissao_base: 2,
     perc_comissao_extra: 1,
     perc_premiacao: 1,
     limite_desconto: 12,
   })
+
+  // Benefício calculado automaticamente: dias úteis × R$ 8,60
+  const diasUteis = useMemo(() => calcularDiasUteis(mes, ano), [mes, ano])
+  const beneficioCalculado = useMemo(() => calcularBeneficio(mes, ano), [mes, ano])
 
   async function carregarParametros() {
     setLoading(true)
@@ -32,7 +35,6 @@ export default function ParametrosPage() {
       setForm({
         meta: data.meta,
         salario_base: data.salario_base,
-        beneficio: data.beneficio,
         perc_comissao_base: data.perc_comissao_base * 100,
         perc_comissao_extra: data.perc_comissao_extra * 100,
         perc_premiacao: data.perc_premiacao * 100,
@@ -56,7 +58,7 @@ export default function ParametrosPage() {
         mes, ano,
         meta: form.meta,
         salario_base: form.salario_base,
-        beneficio: form.beneficio,
+        beneficio: beneficioCalculado,
         perc_comissao_base: form.perc_comissao_base / 100,
         perc_comissao_extra: form.perc_comissao_extra / 100,
         perc_premiacao: form.perc_premiacao / 100,
@@ -69,7 +71,7 @@ export default function ParametrosPage() {
     setTimeout(() => setSucesso(false), 3000)
   }
 
-  const totalBrutoEstimado = form.salario_base + form.beneficio
+  const totalBrutoEstimado = form.salario_base + beneficioCalculado
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -146,13 +148,11 @@ export default function ParametrosPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Benefício (R$)</label>
-              <input
-                type="number"
-                value={form.beneficio}
-                onChange={e => setForm(p => ({ ...p, beneficio: Number(e.target.value) }))}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <label className="block text-xs text-gray-500 mb-1">Benefício (calculado automaticamente)</label>
+              <div className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50 text-sm text-green-800 font-semibold">
+                {formatCurrency(beneficioCalculado)}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">{diasUteis} dias úteis × R$ 8,60</p>
             </div>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default function ParametrosPage() {
             <li>• Comissão base de <strong>{form.perc_comissao_base}%</strong> sobre cada venda</li>
             <li>• <strong>+{form.perc_comissao_extra}%</strong> extra em vendas com desconto abaixo de <strong>{form.limite_desconto}%</strong></li>
             <li>• <strong>+{form.perc_premiacao}%</strong> de premiação se total vendas ≥ <strong>{formatCurrency(form.meta)}</strong></li>
-            <li>• Salário base: <strong>{formatCurrency(form.salario_base)}</strong> + Benefício: <strong>{formatCurrency(form.beneficio)}</strong></li>
+            <li>• Salário base: <strong>{formatCurrency(form.salario_base)}</strong> + Benefício: <strong>{formatCurrency(beneficioCalculado)}</strong> ({diasUteis}d × R$ 8,60)</li>
             <li>• INSS progressivo deduzido do total (salário + comissões)</li>
           </ul>
         </div>

@@ -8,7 +8,30 @@ export const COMISSAO_PREMIACAO = 0.01      // +1% se atingir meta
 export const LIMITE_DESCONTO = 0.12        // 12% — padrão (Regiane)
 export const META_MENSAL = 60000           // R$ 60.000
 export const SALARIO_BASE = 1620           // Salário mínimo 2026
-export const BENEFICIO = 450              // Benefício fixo
+export const VALOR_DIA_UTIL = 8.60         // R$ 8,60 por dia útil (benefício)
+
+// ============================================================
+// DIAS ÚTEIS E BENEFÍCIO MENSAL
+// ============================================================
+
+/**
+ * Conta os dias úteis (seg–sex) de um mês/ano.
+ * Não inclui feriados nacionais (apenas fins de semana).
+ */
+export function calcularDiasUteis(mes: number, ano: number): number {
+  const totalDias = new Date(ano, mes, 0).getDate()
+  let diasUteis = 0
+  for (let dia = 1; dia <= totalDias; dia++) {
+    const diaSemana = new Date(ano, mes - 1, dia).getDay()
+    if (diaSemana !== 0 && diaSemana !== 6) diasUteis++
+  }
+  return diasUteis
+}
+
+/** Benefício do mês = dias úteis × R$ 8,60 */
+export function calcularBeneficio(mes: number, ano: number): number {
+  return Math.round(calcularDiasUteis(mes, ano) * VALOR_DIA_UTIL * 100) / 100
+}
 
 // ============================================================
 // TABELA INSS PROGRESSIVA 2025
