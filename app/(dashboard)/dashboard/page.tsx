@@ -27,9 +27,7 @@ export default async function DashboardPage() {
   // Montar dados por vendedor
   const dadosVendedores = VENDEDORES_CONFIG.map(v => ({
     nome: v.nome,
-    vendas: (todasVendas ?? [])
-      .filter(x => x.vendedor_nome === v.nome)
-      .map(x => ({ valor: x.valor_venda, precoTabela: x.preco_tabela })),
+    vendas: (todasVendas ?? []).filter(x => x.vendedor_nome === v.nome),
     parametros: {
       meta: 60000,
       salario_base: 1620,
