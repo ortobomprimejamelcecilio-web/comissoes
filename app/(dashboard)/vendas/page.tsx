@@ -15,31 +15,27 @@ export default async function VendasPage() {
   const mes = now.getMonth() + 1
   const ano = now.getFullYear()
 
-  // Buscar perfis dos dois vendedores
+  // Buscar todos os vendedores cadastrados
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, nome')
-    .in('nome', ['Robson Brito', 'Regiane Brito'])
+    .order('nome', { ascending: true })
 
-  const robsonId = profiles?.find(p => p.nome === 'Robson Brito')?.id ?? ''
-  const regianeId = profiles?.find(p => p.nome === 'Regiane Brito')?.id ?? ''
+  const vendedoresProfiles = profiles ?? []
+  const ids = vendedoresProfiles.map(p => p.id).filter(Boolean)
 
-  const ids = [robsonId, regianeId].filter(Boolean)
-
-  // Buscar todas as vendas dos dois vendedores no mês
-  const { data: vendas } = await supabase
-    .from('vendas')
-    .select('*')
-    .in('vendedor_id', ids)
-    .eq('mes', mes)
-    .eq('ano', ano)
-    .order('numero', { ascending: true })
+  // Buscar todas as vendas dos vendedores no mês
+  const { data: vendas } = ids.length
+    ? await supabase.from('vendas').select('*').in('vendedor_id', ids).eq('mes', mes).eq('ano', ano).order('numero', { ascending: true })
+    : { data: [] }
 
   // Buscar parametros de cada vendedor
-  const [{ data: paramsRobson }, { data: paramsRegiane }] = await Promise.all([
-    robsonId ? supabase.from('parametros').select('*').eq('vendedor_id', robsonId).eq('mes', mes).eq('ano', ano).single() : Promise.resolve({ data: null }),
-    regianeId ? supabase.from('parametros').select('*').eq('vendedor_id', regianeId).eq('mes', mes).eq('ano', ano).single() : Promise.resolve({ data: null }),
-  ])
+  const paramsMap: Record<string, Record<string, number>> = {}
+  if (ids.length) {
+    const { data: todosParams } = await supabase
+      .from('parametros').select('*').in('vendedor_id', ids).eq('mes', mes).eq('ano', ano)
+    for (const p of todosParams ?? []) paramsMap[p.vendedor_id] = p
+  }
 
   // Buscar próximo número global
   const { data: ultimaVenda } = await supabase
@@ -53,18 +49,17 @@ export default async function VendasPage() {
 
   const beneficioMes = calcularBeneficio(mes, ano)
 
-  const vendedores = [
-    {
-      id: robsonId,
-      nome: 'Robson Brito',
-      parametros: { ...(paramsRobson ?? PARAMS_PADRAO(0.15, mes, ano)), beneficio: beneficioMes },
+  // Limite padrão por nome (Robson 15%, todos os outros 12%)
+  const limiteDefault = (nome: string) => nome === 'Robson Brito' ? 0.15 : 0.12
+
+  const vendedores = vendedoresProfiles.map(p => ({
+    id: p.id,
+    nome: p.nome,
+    parametros: {
+      ...(paramsMap[p.id] ?? PARAMS_PADRAO(limiteDefault(p.nome), mes, ano)),
+      beneficio: beneficioMes,
     },
-    {
-      id: regianeId,
-      nome: 'Regiane Brito',
-      parametros: { ...(paramsRegiane ?? PARAMS_PADRAO(0.12, mes, ano)), beneficio: beneficioMes },
-    },
-  ]
+  }))
 
   return (
     <VendasClient

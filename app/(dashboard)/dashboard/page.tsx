@@ -24,40 +24,38 @@ export default async function DashboardPage() {
   const mes = now.getMonth() + 1
   const ano = now.getFullYear()
 
-  // Buscar perfis de Robson e Regiane
-  const { data: vendedores } = await supabase
+  // Buscar todos os vendedores cadastrados
+  const { data: profiles } = await supabase
     .from('profiles')
     .select('id, nome')
-    .in('nome', ['Robson Brito', 'Regiane Brito'])
+    .order('nome', { ascending: true })
+
+  const vendedoresProfiles = profiles ?? []
+  const beneficioMes = calcularBeneficio(mes, ano)
 
   const fetchVendedor = async (id: string, nome: string) => {
     const [{ data: vendas }, { data: params }] = await Promise.all([
       supabase.from('vendas').select('*').eq('vendedor_id', id).eq('mes', mes).eq('ano', ano).order('data_venda', { ascending: true }),
       supabase.from('parametros').select('*').eq('vendedor_id', id).eq('mes', mes).eq('ano', ano).single(),
     ])
-    const beneficioMes = calcularBeneficio(mes, ano)
+    const limite = LIMITES[nome] ?? 0.12
     return {
       nome,
       vendas: vendas ?? [],
-      // sempre sobrescreve o benefício com o cálculo de dias úteis
-      parametros: { ...(params ?? PARAMS_PADRAO(LIMITES[nome] ?? 0.12, mes, ano)), beneficio: beneficioMes },
+      parametros: { ...(params ?? PARAMS_PADRAO(limite, mes, ano)), beneficio: beneficioMes },
     }
   }
 
-  const robson = vendedores?.find(v => v.nome === 'Robson Brito')
-  const regiane = vendedores?.find(v => v.nome === 'Regiane Brito')
-
-  const [dadosRobson, dadosRegiane] = await Promise.all([
-    robson ? fetchVendedor(robson.id, 'Robson Brito') : Promise.resolve({ nome: 'Robson Brito', vendas: [], parametros: PARAMS_PADRAO(0.15, mes, ano) }),
-    regiane ? fetchVendedor(regiane.id, 'Regiane Brito') : Promise.resolve({ nome: 'Regiane Brito', vendas: [], parametros: PARAMS_PADRAO(0.12, mes, ano) }),
-  ])
+  const dadosVendedores = await Promise.all(
+    vendedoresProfiles.map(v => fetchVendedor(v.id, v.nome))
+  )
 
   return (
     <DashboardClient
       modo="admin"
       mes={mes}
       ano={ano}
-      vendedores={[dadosRobson, dadosRegiane]}
+      vendedores={dadosVendedores}
     />
   )
 }
