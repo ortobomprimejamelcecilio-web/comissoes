@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS public.vendas (
     CASE WHEN preco_tabela > 0 AND (preco_tabela - valor_venda) / preco_tabela < 0.12
     THEN valor_venda * 0.01 ELSE 0 END
   ) STORED,
+  numero_pedido TEXT,
   mes INTEGER NOT NULL,
   ano INTEGER NOT NULL,
   vendedor_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,

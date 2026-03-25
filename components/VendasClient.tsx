@@ -9,7 +9,7 @@ import { Plus, Trash2, TrendingUp, CheckCircle, XCircle, AlertTriangle } from 'l
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
 interface Venda {
-  id: number; numero: number; cliente: string; canal: string
+  id: number; numero: number; numero_pedido: string | null; cliente: string; canal: string
   data_venda: string; valor_venda: number; preco_tabela: number
   comissao_base: number; comissao_extra: number; perc_desconto: number
 }
@@ -36,6 +36,7 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
     data_venda: format(new Date(), 'yyyy-MM-dd'),
     valor_venda: '',
     preco_tabela: '',
+    numero_pedido: '',
   })
 
   const hoje = new Date()
@@ -70,13 +71,14 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
         numero: proximoNumero + vendas.length,
         valor_venda: parseFloat(form.valor_venda),
         preco_tabela: parseFloat(form.preco_tabela),
+        numero_pedido: form.numero_pedido || null,
       }),
     })
 
     if (res.ok) {
       const nova = await res.json()
       setVendas(prev => [...prev, nova])
-      setForm({ cliente: '', canal: 'LOJA', data_venda: format(new Date(), 'yyyy-MM-dd'), valor_venda: '', preco_tabela: '' })
+      setForm({ cliente: '', canal: 'LOJA', data_venda: format(new Date(), 'yyyy-MM-dd'), valor_venda: '', preco_tabela: '', numero_pedido: '' })
       setShowForm(false)
     } else {
       setErro('Erro ao salvar venda. Tente novamente.')
@@ -128,6 +130,16 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
                 onChange={e => setForm(p => ({ ...p, cliente: e.target.value.toUpperCase() }))}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
                 placeholder="NOME DO CLIENTE"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nº Pedido</label>
+              <input
+                value={form.numero_pedido}
+                onChange={e => setForm(p => ({ ...p, numero_pedido: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ex: 12345"
               />
             </div>
 
@@ -284,7 +296,7 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {['Nº','Data','Cliente','Canal','Valor','Tabela','% Desc','Desc < 12%','Comissão','Ações'].map(h => (
+                  {['Nº','Pedido','Data','Cliente','Canal','Valor','Tabela','% Desc','Desc < 12%','Comissão','Ações'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -296,6 +308,9 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
                   return (
                     <tr key={v.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
                       <td className="px-4 py-3 font-mono text-gray-500 text-xs">{v.numero}</td>
+                      <td className="px-4 py-3 font-mono text-gray-700 text-xs font-semibold">
+                        {v.numero_pedido || <span className="text-gray-300">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                         {format(new Date(v.data_venda + 'T12:00:00'), 'dd/MM/yyyy')}
                       </td>
@@ -337,7 +352,7 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
               {/* Totais */}
               <tfoot>
                 <tr className="border-t-2 border-gray-200 bg-gray-50">
-                  <td colSpan={4} className="px-4 py-3 font-bold text-gray-700 text-xs uppercase">TOTAIS</td>
+                  <td colSpan={5} className="px-4 py-3 font-bold text-gray-700 text-xs uppercase">TOTAIS</td>
                   <td className="px-4 py-3 font-bold text-gray-900">{formatCurrency(resultado.totalVendas)}</td>
                   <td className="px-4 py-3 text-gray-400 text-xs">—</td>
                   <td className="px-4 py-3 text-gray-400 text-xs">—</td>

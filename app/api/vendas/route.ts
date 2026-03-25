@@ -31,15 +31,16 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const body = await request.json()
-  const { cliente, canal, data_venda, valor_venda, preco_tabela, numero } = body
+  const { cliente, canal, data_venda, valor_venda, preco_tabela, numero, numero_pedido } = body
 
-  const date = new Date(data_venda)
-  const mes = date.getMonth() + 1
-  const ano = date.getFullYear()
+  // Extrai mês/ano direto da string para evitar bug de fuso horário UTC vs BR
+  const [anoStr, mesStr] = data_venda.split('-')
+  const mes = parseInt(mesStr)
+  const ano = parseInt(anoStr)
 
   const { data, error } = await supabase
     .from('vendas')
-    .insert({ cliente, canal, data_venda, valor_venda, preco_tabela, numero, mes, ano, vendedor_id: user.id })
+    .insert({ cliente, canal, data_venda, valor_venda, preco_tabela, numero, numero_pedido: numero_pedido || null, mes, ano, vendedor_id: user.id })
     .select()
     .single()
 
