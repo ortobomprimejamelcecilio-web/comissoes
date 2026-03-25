@@ -149,7 +149,7 @@ export function calcularMes(
   const totalComissoes = totalComissaoBase + totalComissaoExtraDesconto + premiacao
 
   const salarioBase = params.salario_base ?? SALARIO_BASE
-  const beneficio = params.beneficio ?? BENEFICIO
+  const beneficio = params.beneficio ?? 0
 
   // INSS incide sobre salário + comissões (não sobre benefício)
   const baseINSS = salarioBase + totalComissoes
