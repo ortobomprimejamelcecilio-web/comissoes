@@ -2,9 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { calcularComissaoVenda, calcularMes, formatCurrency, formatPercent } from '@/lib/commission'
-import { Plus, Trash2, TrendingUp, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, TrendingUp, CheckCircle, XCircle, AlertTriangle, User } from 'lucide-react'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
@@ -12,16 +11,22 @@ interface Venda {
   id: number; numero: number; numero_pedido: string | null; cliente: string; canal: string
   data_venda: string; valor_venda: number; preco_tabela: number
   comissao_base: number; comissao_extra: number; perc_desconto: number
+  vendedor_id: string
 }
 interface Parametros {
   meta: number; salario_base: number; beneficio: number
   perc_comissao_base: number; perc_comissao_extra: number
   perc_premiacao: number; limite_desconto: number
 }
-
-export default function VendasClient({ vendasIniciais, parametros, mes, ano, proximoNumero }: {
-  vendasIniciais: Venda[]
+interface VendedorInfo {
+  id: string
+  nome: string
   parametros: Parametros
+}
+
+export default function VendasClient({ vendasIniciais, vendedores, mes, ano, proximoNumero }: {
+  vendasIniciais: Venda[]
+  vendedores: VendedorInfo[]
   mes: number; ano: number
   proximoNumero: number
 }) {
@@ -29,8 +34,10 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
+  const [filtroVendedor, setFiltroVendedor] = useState<string>('todos')
 
   const [form, setForm] = useState({
+    vendedor_id: vendedores[0]?.id ?? '',
     cliente: '',
     canal: 'LOJA',
     data_venda: format(new Date(), 'yyyy-MM-dd'),
@@ -43,23 +50,75 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
   const diaAtual = hoje.getMonth() + 1 === mes && hoje.getFullYear() === ano ? hoje.getDate() : 30
   const diasNoMes = new Date(ano, mes, 0).getDate()
 
-  const resultado = useMemo(() => {
-    const vendasCalc = vendas.map(v => ({ valor: v.valor_venda, precoTabela: v.preco_tabela }))
-    return calcularMes(vendasCalc, diaAtual, diasNoMes)
-  }, [vendas, diaAtual, diasNoMes])
+  // Vendedor selecionado no formulário
+  const vendedorSelecionado = vendedores.find(v => v.id === form.vendedor_id) ?? vendedores[0]
+  const limiteAtual = vendedorSelecionado?.parametros.limite_desconto ?? 0.12
 
-  const percAtingimento = resultado.totalVendas / parametros.meta
-
-  // Preview de comissão ao digitar
+  // Preview de comissão com limite do vendedor selecionado
   const preview = useMemo(() => {
     const val = parseFloat(form.valor_venda)
     const tab = parseFloat(form.preco_tabela)
     if (!val || !tab) return null
-    return calcularComissaoVenda(val, tab)
-  }, [form.valor_venda, form.preco_tabela])
+    return calcularComissaoVenda(val, tab, limiteAtual)
+  }, [form.valor_venda, form.preco_tabela, limiteAtual])
+
+  // Vendas filtradas para exibição
+  const vendasFiltradas = useMemo(() => {
+    if (filtroVendedor === 'todos') return vendas
+    return vendas.filter(v => v.vendedor_id === filtroVendedor)
+  }, [vendas, filtroVendedor])
+
+  // Resumo financeiro das vendas filtradas
+  const resumo = useMemo(() => {
+    const params = filtroVendedor === 'todos'
+      ? { limite_desconto: 0.12 } // fallback, não usado para filtro geral
+      : (vendedores.find(v => v.id === filtroVendedor)?.parametros ?? { limite_desconto: 0.12 })
+
+    let totalVendas = 0, totalComissoes = 0
+    const vendasCalc = vendasFiltradas.map(v => ({ valor: v.valor_venda, precoTabela: v.preco_tabela }))
+    totalVendas = vendasCalc.reduce((s, v) => s + v.valor, 0)
+
+    if (filtroVendedor !== 'todos') {
+      const r = calcularMes(vendasCalc, diaAtual, diasNoMes, params)
+      return {
+        totalVendas: r.totalVendas,
+        totalComissoes: r.totalComissoes,
+        totalLiquido: r.totalLiquido,
+        inss: r.inss,
+        salarioBase: r.salarioBase,
+        beneficio: r.beneficio,
+        percAtingimento: r.totalVendas / (params as Parametros).meta,
+        faltaMeta: r.faltaMeta,
+        meta: (params as Parametros).meta,
+      }
+    }
+
+    // Totais combinados
+    let totalComissoesGeral = 0, totalLiquidoGeral = 0, inssGeral = 0
+    for (const v of vendedores) {
+      const vc = vendas.filter(x => x.vendedor_id === v.id).map(x => ({ valor: x.valor_venda, precoTabela: x.preco_tabela }))
+      const r = calcularMes(vc, diaAtual, diasNoMes, v.parametros)
+      totalComissoesGeral += r.totalComissoes
+      totalLiquidoGeral += r.totalLiquido
+      inssGeral += r.inss
+    }
+
+    return {
+      totalVendas,
+      totalComissoes: totalComissoesGeral,
+      totalLiquido: totalLiquidoGeral,
+      inss: inssGeral,
+      salarioBase: 0,
+      beneficio: 0,
+      percAtingimento: 0,
+      faltaMeta: 0,
+      meta: 0,
+    }
+  }, [vendasFiltradas, filtroVendedor, vendedores, vendas, diaAtual, diasNoMes])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!form.vendedor_id) { setErro('Selecione o vendedor.'); return }
     setLoading(true)
     setErro('')
 
@@ -67,21 +126,25 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ...form,
-        numero: proximoNumero + vendas.length,
+        vendedor_id: form.vendedor_id,
+        cliente: form.cliente,
+        canal: form.canal,
+        data_venda: form.data_venda,
         valor_venda: parseFloat(form.valor_venda),
         preco_tabela: parseFloat(form.preco_tabela),
         numero_pedido: form.numero_pedido || null,
+        numero: proximoNumero + vendas.length,
       }),
     })
 
     if (res.ok) {
       const nova = await res.json()
       setVendas(prev => [...prev, nova])
-      setForm({ cliente: '', canal: 'LOJA', data_venda: format(new Date(), 'yyyy-MM-dd'), valor_venda: '', preco_tabela: '', numero_pedido: '' })
+      setForm(p => ({ ...p, cliente: '', canal: 'LOJA', data_venda: format(new Date(), 'yyyy-MM-dd'), valor_venda: '', preco_tabela: '', numero_pedido: '' }))
       setShowForm(false)
     } else {
-      setErro('Erro ao salvar venda. Tente novamente.')
+      const data = await res.json()
+      setErro(data.error ?? 'Erro ao salvar venda.')
     }
     setLoading(false)
   }
@@ -92,16 +155,18 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
     if (res.ok) setVendas(prev => prev.filter(v => v.id !== id))
   }
 
+  const nomeVendedor = (id: string) => vendedores.find(v => v.id === id)?.nome ?? '—'
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Vendas</h1>
-          <p className="text-gray-500 text-sm">{MESES[mes-1]} de {ano}</p>
+          <p className="text-gray-500 text-sm">{MESES[mes-1]} de {ano} — {vendas.length} registro{vendas.length !== 1 ? 's' : ''}</p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); setErro('') }}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold transition-all text-sm"
           style={{ background: '#2563eb' }}
         >
@@ -122,6 +187,26 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
           )}
 
           <form onSubmit={handleSubmit} className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+
+            {/* Vendedor */}
+            <div className="col-span-2 lg:col-span-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Vendedor *</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <select
+                  required
+                  value={form.vendedor_id}
+                  onChange={e => setForm(p => ({ ...p, vendedor_id: e.target.value }))}
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white appearance-none"
+                >
+                  {vendedores.map(v => (
+                    <option key={v.id} value={v.id}>{v.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Limite desconto: {Math.round(limiteAtual * 100)}%</p>
+            </div>
+
             <div className="col-span-2 lg:col-span-1">
               <label className="block text-xs font-medium text-gray-600 mb-1">Nome do Cliente *</label>
               <input
@@ -198,26 +283,26 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
             {preview && (
               <div className="col-span-2 lg:col-span-3">
                 <div className={`p-3 rounded-xl border text-sm ${
-                  preview.percDesconto < parametros.limite_desconto
+                  preview.percDesconto < limiteAtual
                     ? 'bg-green-50 border-green-200'
                     : 'bg-yellow-50 border-yellow-200'
                 }`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    {preview.percDesconto < parametros.limite_desconto
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {preview.percDesconto < limiteAtual
                       ? <CheckCircle className="w-4 h-4 text-green-600" />
                       : <AlertTriangle className="w-4 h-4 text-yellow-600" />
                     }
                     <span className="font-semibold">
-                      {preview.percDesconto < parametros.limite_desconto
-                        ? `✅ Desconto OK (${formatPercent(preview.percDesconto)}) — ganha +1% extra!`
-                        : `⚠️ Desconto alto (${formatPercent(preview.percDesconto)}) — sem +1% extra`
+                      {preview.percDesconto < limiteAtual
+                        ? `Desconto OK (${formatPercent(preview.percDesconto)}) — ganha +1% extra`
+                        : `Desconto alto (${formatPercent(preview.percDesconto)}) — sem +1% extra`
                       }
                     </span>
                   </div>
-                  <div className="flex gap-6 text-xs">
+                  <div className="flex gap-6 text-xs text-gray-600">
                     <span>Comissão base: <strong>{formatCurrency(preview.comissaoBase)}</strong></span>
-                    <span>Extra desconto: <strong>{formatCurrency(preview.comissaoExtraDesconto)}</strong></span>
-                    <span className="font-bold">Total nesta venda: <strong>{formatCurrency(preview.totalComissaoVenda)}</strong></span>
+                    <span>Extra: <strong>{formatCurrency(preview.comissaoExtraDesconto)}</strong></span>
+                    <span className="font-bold text-gray-800">Total: <strong>{formatCurrency(preview.totalComissaoVenda)}</strong></span>
                   </div>
                 </div>
               </div>
@@ -244,51 +329,35 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
         </div>
       )}
 
-      {/* Barra de Progresso da Meta */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-700">Progresso da Meta — {MESES[mes-1]}</p>
-            <p className="text-xs text-gray-400">{formatCurrency(resultado.totalVendas)} de {formatCurrency(parametros.meta)}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold" style={{ color: percAtingimento >= 1 ? '#16a34a' : '#2563eb' }}>
-              {formatPercent(percAtingimento)}
-            </p>
-            <p className="text-xs text-gray-400">
-              {percAtingimento >= 1 ? '🎉 Meta batida!' : `Falta ${formatCurrency(resultado.faltaMeta)}`}
-            </p>
-          </div>
-        </div>
-        <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${Math.min(percAtingimento * 100, 100)}%`,
-              background: percAtingimento >= 1 ? '#16a34a' : '#2563eb',
-            }}
-          />
-        </div>
-
-        {/* Resumo Rápido */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100">
-          <ResumoItem label="Total Vendas Loja" value={formatCurrency(vendas.filter(v => v.canal === 'LOJA').reduce((s,v) => s+v.valor_venda, 0))} />
-          <ResumoItem label="Total Vendas Internet" value={formatCurrency(vendas.filter(v => v.canal === 'INTERNET').reduce((s,v) => s+v.valor_venda, 0))} />
-          <ResumoItem label="Total Comissões" value={formatCurrency(resultado.totalComissoes)} highlight />
-          <ResumoItem label="Total Líquido (INSS)" value={formatCurrency(resultado.totalLiquido)} highlight />
-        </div>
+      {/* Filtro por vendedor */}
+      <div className="flex gap-2">
+        {[{ id: 'todos', nome: 'Todos' }, ...vendedores].map(v => (
+          <button
+            key={v.id}
+            onClick={() => setFiltroVendedor(v.id)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              filtroVendedor === v.id
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {v.nome}
+          </button>
+        ))}
       </div>
 
       {/* Tabela de Vendas */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-5 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800">Lista de Vendas — {vendas.length} registro{vendas.length !== 1 ? 's' : ''}</h2>
+          <h2 className="font-semibold text-gray-800">
+            {filtroVendedor === 'todos' ? 'Todas as Vendas' : nomeVendedor(filtroVendedor)} — {vendasFiltradas.length} registro{vendasFiltradas.length !== 1 ? 's' : ''}
+          </h2>
         </div>
 
-        {vendas.length === 0 ? (
+        {vendasFiltradas.length === 0 ? (
           <div className="p-12 text-center text-gray-400">
             <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">Nenhuma venda registrada este mês</p>
+            <p className="font-medium">Nenhuma venda registrada</p>
             <p className="text-sm">Clique em "Nova Venda" para começar</p>
           </div>
         ) : (
@@ -296,47 +365,56 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {['Nº','Pedido','Data','Cliente','Canal','Valor','Tabela','% Desc','Desc < 12%','Comissão','Ações'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  {['Nº','Pedido','Vendedor','Data','Cliente','Canal','Valor','Tabela','% Desc','Extra','Comissão','Ações'].map(h => (
+                    <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {vendas.map((v, i) => {
-                  const calc = calcularComissaoVenda(v.valor_venda, v.preco_tabela)
-                  const descOk = calc.percDesconto < parametros.limite_desconto
+                {vendasFiltradas.map((v, i) => {
+                  const vendInfo = vendedores.find(x => x.id === v.vendedor_id)
+                  const limite = vendInfo?.parametros.limite_desconto ?? 0.12
+                  const calc = calcularComissaoVenda(v.valor_venda, v.preco_tabela, limite)
+                  const descOk = calc.percDesconto < limite
                   return (
                     <tr key={v.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                      <td className="px-4 py-3 font-mono text-gray-500 text-xs">{v.numero}</td>
-                      <td className="px-4 py-3 font-mono text-gray-700 text-xs font-semibold">
+                      <td className="px-3 py-3 font-mono text-gray-500 text-xs">{v.numero}</td>
+                      <td className="px-3 py-3 font-mono text-gray-700 text-xs font-semibold">
                         {v.numero_pedido || <span className="text-gray-300">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      <td className="px-3 py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${
+                          vendInfo?.nome === 'Robson Brito' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'
+                        }`}>
+                          {vendInfo?.nome.split(' ')[0] ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
                         {format(new Date(v.data_venda + 'T12:00:00'), 'dd/MM/yyyy')}
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-800 uppercase">{v.cliente}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 font-medium text-gray-800 uppercase">{v.cliente}</td>
+                      <td className="px-3 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          v.canal === 'LOJA' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                          v.canal === 'LOJA' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
                         }`}>{v.canal}</span>
                       </td>
-                      <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(v.valor_venda)}</td>
-                      <td className="px-4 py-3 text-gray-500">{formatCurrency(v.preco_tabela)}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 font-semibold text-gray-900">{formatCurrency(v.valor_venda)}</td>
+                      <td className="px-3 py-3 text-gray-500">{formatCurrency(v.preco_tabela)}</td>
+                      <td className="px-3 py-3">
                         <span className={`font-medium ${descOk ? 'text-green-600' : 'text-red-500'}`}>
                           {formatPercent(calc.percDesconto)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-3 py-3 text-center">
                         {descOk
                           ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />
                           : <XCircle className="w-4 h-4 text-gray-300 mx-auto" />
                         }
                       </td>
-                      <td className="px-4 py-3 font-semibold text-blue-600">
+                      <td className="px-3 py-3 font-semibold text-blue-600 whitespace-nowrap">
                         {formatCurrency(calc.totalComissaoVenda)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <button
                           onClick={() => handleDelete(v.id)}
                           className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50"
@@ -348,18 +426,18 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
                   )
                 })}
               </tbody>
-
-              {/* Totais */}
               <tfoot>
                 <tr className="border-t-2 border-gray-200 bg-gray-50">
-                  <td colSpan={5} className="px-4 py-3 font-bold text-gray-700 text-xs uppercase">TOTAIS</td>
-                  <td className="px-4 py-3 font-bold text-gray-900">{formatCurrency(resultado.totalVendas)}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">—</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">—</td>
-                  <td className="px-4 py-3 text-center text-xs text-gray-500">
-                    {vendas.filter(v => calcularComissaoVenda(v.valor_venda, v.preco_tabela).percDesconto < parametros.limite_desconto).length} ok
+                  <td colSpan={6} className="px-3 py-3 font-bold text-gray-700 text-xs uppercase">TOTAIS</td>
+                  <td className="px-3 py-3 font-bold text-gray-900">{formatCurrency(resumo.totalVendas)}</td>
+                  <td colSpan={2} className="px-3 py-3 text-gray-400 text-xs">—</td>
+                  <td className="px-3 py-3 text-center text-xs text-gray-500">
+                    {vendasFiltradas.filter(v => {
+                      const lim = vendedores.find(x => x.id === v.vendedor_id)?.parametros.limite_desconto ?? 0.12
+                      return calcularComissaoVenda(v.valor_venda, v.preco_tabela, lim).percDesconto < lim
+                    }).length} ok
                   </td>
-                  <td className="px-4 py-3 font-bold text-blue-600">{formatCurrency(resultado.totalComissoes)}</td>
+                  <td className="px-3 py-3 font-bold text-blue-600 whitespace-nowrap">{formatCurrency(resumo.totalComissoes)}</td>
                   <td />
                 </tr>
               </tfoot>
@@ -368,43 +446,30 @@ export default function VendasClient({ vendasIniciais, parametros, mes, ano, pro
         )}
       </div>
 
-      {/* Resumo Financeiro Rodapé */}
+      {/* Resumo Financeiro */}
       {vendas.length > 0 && (
         <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-5 text-white">
           <h3 className="font-semibold mb-3 opacity-90">Fechamento Parcial — {MESES[mes-1]}/{ano}</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs opacity-70">Salário Base</p>
-              <p className="font-bold">{formatCurrency(parametros.salario_base)}</p>
-            </div>
-            <div>
-              <p className="text-xs opacity-70">Benefício</p>
-              <p className="font-bold">{formatCurrency(parametros.beneficio)}</p>
+              <p className="text-xs opacity-70">Total Vendas</p>
+              <p className="font-bold">{formatCurrency(resumo.totalVendas)}</p>
             </div>
             <div>
               <p className="text-xs opacity-70">Total Comissões</p>
-              <p className="font-bold">{formatCurrency(resultado.totalComissoes)}</p>
+              <p className="font-bold">{formatCurrency(resumo.totalComissoes)}</p>
             </div>
             <div>
-              <p className="text-xs opacity-70">INSS</p>
-              <p className="font-bold text-red-300">- {formatCurrency(resultado.inss)}</p>
+              <p className="text-xs opacity-70">INSS Total</p>
+              <p className="font-bold text-red-300">- {formatCurrency(resumo.inss)}</p>
             </div>
             <div>
               <p className="text-xs opacity-70">Total Líquido</p>
-              <p className="text-xl font-bold text-yellow-300">{formatCurrency(resultado.totalLiquido)}</p>
+              <p className="text-xl font-bold text-yellow-300">{formatCurrency(resumo.totalLiquido)}</p>
             </div>
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function ResumoItem({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div>
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className={`font-bold ${highlight ? 'text-blue-600' : 'text-gray-800'}`}>{value}</p>
     </div>
   )
 }
