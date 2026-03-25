@@ -16,7 +16,7 @@ export default function ParametrosPage() {
 
   const [form, setForm] = useState({
     meta: 60000,
-    salario_base: 1518,
+    salario_base: 1620,
     beneficio: 450,
     perc_comissao_base: 2,
     perc_comissao_extra: 1,

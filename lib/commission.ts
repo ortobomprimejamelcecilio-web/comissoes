@@ -3,11 +3,11 @@
 // ============================================================
 
 export const COMISSAO_BASE = 0.02          // 2% sobre cada venda
-export const COMISSAO_EXTRA_DESCONTO = 0.01 // +1% se desconto < 12%
+export const COMISSAO_EXTRA_DESCONTO = 0.01 // +1% se desconto < limite
 export const COMISSAO_PREMIACAO = 0.01      // +1% se atingir meta
-export const LIMITE_DESCONTO = 0.12        // 12% — limite p/ ganhar 1% extra
+export const LIMITE_DESCONTO = 0.12        // 12% — padrão (Regiane)
 export const META_MENSAL = 60000           // R$ 60.000
-export const SALARIO_BASE = 1518           // Salário mínimo 2025
+export const SALARIO_BASE = 1620           // Salário mínimo 2026
 export const BENEFICIO = 450              // Benefício fixo
 
 // ============================================================
@@ -41,7 +41,11 @@ export function calcularINSS(baseCalculo: number): number {
 // ============================================================
 // CÁLCULO DE COMISSÃO POR VENDA
 // ============================================================
-export function calcularComissaoVenda(valorVenda: number, precoTabela: number): {
+export function calcularComissaoVenda(
+  valorVenda: number,
+  precoTabela: number,
+  limiteDesconto: number = LIMITE_DESCONTO,
+): {
   comissaoBase: number
   comissaoExtraDesconto: number
   percDesconto: number
@@ -49,7 +53,7 @@ export function calcularComissaoVenda(valorVenda: number, precoTabela: number): 
 } {
   const percDesconto = precoTabela > 0 ? (precoTabela - valorVenda) / precoTabela : 0
   const comissaoBase = valorVenda * COMISSAO_BASE
-  const comissaoExtraDesconto = percDesconto < LIMITE_DESCONTO ? valorVenda * COMISSAO_EXTRA_DESCONTO : 0
+  const comissaoExtraDesconto = percDesconto < limiteDesconto ? valorVenda * COMISSAO_EXTRA_DESCONTO : 0
 
   return {
     comissaoBase,
@@ -91,23 +95,38 @@ export interface ResultadoMensal {
   percProjecao: number
 }
 
-export function calcularMes(vendas: VendaCalc[], diaAtual: number, totalDiasMes: number): ResultadoMensal {
+export interface ParamsCalc {
+  meta?: number
+  salario_base?: number
+  beneficio?: number
+  limite_desconto?: number
+}
+
+export function calcularMes(
+  vendas: VendaCalc[],
+  diaAtual: number,
+  totalDiasMes: number,
+  params: ParamsCalc = {},
+): ResultadoMensal {
+  const metaMensal = params.meta ?? META_MENSAL
+  const limiteDesconto = params.limite_desconto ?? LIMITE_DESCONTO
+
   const totalVendas = vendas.reduce((s, v) => s + v.valor, 0)
 
   let totalComissaoBase = 0
   let totalComissaoExtraDesconto = 0
 
   for (const v of vendas) {
-    const calc = calcularComissaoVenda(v.valor, v.precoTabela)
+    const calc = calcularComissaoVenda(v.valor, v.precoTabela, limiteDesconto)
     totalComissaoBase += calc.comissaoBase
     totalComissaoExtraDesconto += calc.comissaoExtraDesconto
   }
 
-  const premiacao = totalVendas >= META_MENSAL ? totalVendas * COMISSAO_PREMIACAO : 0
+  const premiacao = totalVendas >= metaMensal ? totalVendas * COMISSAO_PREMIACAO : 0
   const totalComissoes = totalComissaoBase + totalComissaoExtraDesconto + premiacao
 
-  const salarioBase = SALARIO_BASE
-  const beneficio = BENEFICIO
+  const salarioBase = params.salario_base ?? SALARIO_BASE
+  const beneficio = params.beneficio ?? BENEFICIO
 
   // INSS incide sobre salário + comissões (não sobre benefício)
   const baseINSS = salarioBase + totalComissoes
@@ -116,16 +135,16 @@ export function calcularMes(vendas: VendaCalc[], diaAtual: number, totalDiasMes:
   const totalBruto = salarioBase + beneficio + totalComissoes
   const totalLiquido = totalBruto - inss
 
-  const percAtingimento = totalVendas / META_MENSAL
-  const faltaMeta = Math.max(0, META_MENSAL - totalVendas)
+  const percAtingimento = totalVendas / metaMensal
+  const faltaMeta = Math.max(0, metaMensal - totalVendas)
 
   // Projeção: ritmo atual × dias restantes
   const projecaoMes = diaAtual > 0 ? (totalVendas / diaAtual) * totalDiasMes : 0
-  const percProjecao = projecaoMes / META_MENSAL
+  const percProjecao = projecaoMes / metaMensal
 
   return {
     totalVendas,
-    metaMensal: META_MENSAL,
+    metaMensal,
     percAtingimento,
     faltaMeta,
     totalComissaoBase,
