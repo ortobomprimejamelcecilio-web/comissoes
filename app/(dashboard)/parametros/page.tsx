@@ -23,7 +23,7 @@ export default function ParametrosPage() {
     limite_desconto: 12,
   })
 
-  // Benefício calculado automaticamente: dias úteis × R$ 8,60
+  // Benefício calculado automaticamente: dias úteis × R$ 17,20
   const diasUteis = useMemo(() => calcularDiasUteis(mes, ano), [mes, ano])
   const beneficioCalculado = useMemo(() => calcularBeneficio(mes, ano), [mes, ano])
 
@@ -152,7 +152,7 @@ export default function ParametrosPage() {
               <div className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50 text-sm text-green-800 font-semibold">
                 {formatCurrency(beneficioCalculado)}
               </div>
-              <p className="text-xs text-gray-400 mt-1">{diasUteis} dias úteis × R$ 8,60</p>
+              <p className="text-xs text-gray-400 mt-1">{diasUteis} dias úteis × R$ 17,20</p>
             </div>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default function ParametrosPage() {
             <li>• Comissão base de <strong>{form.perc_comissao_base}%</strong> sobre cada venda</li>
             <li>• <strong>+{form.perc_comissao_extra}%</strong> extra em vendas com desconto abaixo de <strong>{form.limite_desconto}%</strong></li>
             <li>• <strong>+{form.perc_premiacao}%</strong> de premiação se total vendas ≥ <strong>{formatCurrency(form.meta)}</strong></li>
-            <li>• Salário base: <strong>{formatCurrency(form.salario_base)}</strong> + Benefício: <strong>{formatCurrency(beneficioCalculado)}</strong> ({diasUteis}d × R$ 8,60)</li>
+            <li>• Salário base: <strong>{formatCurrency(form.salario_base)}</strong> + Benefício: <strong>{formatCurrency(beneficioCalculado)}</strong> ({diasUteis}d × R$ 17,20)</li>
             <li>• INSS progressivo deduzido do total (salário + comissões)</li>
           </ul>
         </div>

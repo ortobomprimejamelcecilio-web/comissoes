@@ -8,7 +8,7 @@ export const COMISSAO_PREMIACAO = 0.01      // +1% se atingir meta
 export const LIMITE_DESCONTO = 0.12        // 12% — padrão (Regiane)
 export const META_MENSAL = 60000           // R$ 60.000
 export const SALARIO_BASE = 1620           // Salário mínimo 2026
-export const VALOR_DIA_UTIL = 8.60         // R$ 8,60 por dia útil (benefício)
+export const VALOR_DIA_UTIL = 17.20        // R$ 17,20 por dia útil (benefício)
 
 // ============================================================
 // DIAS ÚTEIS E BENEFÍCIO MENSAL

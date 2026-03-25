@@ -168,7 +168,7 @@ export default function ContrachequeClient({ vendedores, mes, ano }: {
           <div className="divide-y divide-gray-50">
             <RubricaRow desc="Salário Base (Salário Mínimo 2026)" valor={formatCurrency(atual.parametros.salario_base)} tipo="provento" />
             <RubricaRow
-              desc={`Benefício (${diasUteis} dias úteis × R$ 8,60)`}
+              desc={`Benefício (${diasUteis} dias úteis × R$ 17,20)`}
               valor={formatCurrency(atual.parametros.beneficio)}
               tipo="provento"
             />
