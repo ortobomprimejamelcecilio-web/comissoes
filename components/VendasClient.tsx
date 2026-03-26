@@ -409,15 +409,81 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                 })}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-gray-200 bg-gray-50">
+                {/* Totais por vendedor quando exibindo todos */}
+                {filtroVendedor === 'todos' && VENDEDORES_CONFIG.map(vc => {
+                  const vv = vendasFiltradas.filter(x => x.vendedor_nome === vc.nome)
+                  if (vv.length === 0) return null
+                  const totalV = vv.reduce((s, x) => s + x.valor_venda, 0)
+                  const totalT = vv.reduce((s, x) => s + x.preco_tabela, 0)
+                  const descPond = totalT > 0 ? (totalT - totalV) / totalT : 0
+                  const extraOk = descPond < vc.limiteDesconto
+                  const extra1pct = extraOk ? totalV * 0.01 : 0
+                  const comBase = vv.reduce((s, x) => s + x.valor_venda * 0.02, 0)
+                  return (
+                    <tr key={vc.nome} className="border-t border-gray-200 bg-gray-50/70">
+                      <td colSpan={6} className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
+                        {vc.nome.split(' ')[0]} (lim {Math.round(vc.limiteDesconto * 100)}%)
+                      </td>
+                      <td className="px-3 py-2 font-semibold text-gray-800 text-sm">{formatCurrency(totalV)}</td>
+                      <td className="px-3 py-2 text-gray-400 text-xs">{formatCurrency(totalT)}</td>
+                      <td className={`px-3 py-2 font-semibold text-sm ${extraOk ? 'text-green-600' : 'text-red-500'}`}>
+                        {formatPercent(descPond)}
+                      </td>
+                      <td className="px-3 py-2 text-sm">
+                        {extraOk
+                          ? <span className="text-green-600 font-semibold">{formatCurrency(extra1pct)}</span>
+                          : <span className="text-gray-400 text-xs">R$ 0,00</span>
+                        }
+                      </td>
+                      <td className="px-3 py-2 font-bold text-blue-600 text-sm whitespace-nowrap">{formatCurrency(comBase + extra1pct)}</td>
+                      <td />
+                    </tr>
+                  )
+                })}
+
+                {/* Linha de total geral */}
+                <tr className="border-t-2 border-gray-300 bg-gray-100">
                   <td colSpan={6} className="px-3 py-3 font-bold text-gray-700 text-xs uppercase">TOTAIS</td>
-                  <td className="px-3 py-3 font-bold text-gray-900">{formatCurrency(resumo.totalVendas)}</td>
-                  <td colSpan={2} className="px-3 py-3 text-gray-400 text-xs">—</td>
-                  <td className="px-3 py-3 text-center text-xs text-gray-500">
-                    {vendasFiltradas.filter(v => {
-                      const lim = VENDEDORES_CONFIG.find(x => x.nome === v.vendedor_nome)?.limiteDesconto ?? 0.12
-                      return calcularComissaoVenda(v.valor_venda, v.preco_tabela, lim).percDesconto < lim
-                    }).length} ok
+                  <td className="px-3 py-3 font-bold text-gray-900">{formatCurrency(vendasFiltradas.reduce((s,v) => s + v.valor_venda, 0))}</td>
+                  <td className="px-3 py-3 text-gray-400 text-xs">{formatCurrency(vendasFiltradas.reduce((s,v) => s + v.preco_tabela, 0))}</td>
+                  <td className="px-3 py-3">
+                    {(() => {
+                      const totalV = vendasFiltradas.reduce((s,v) => s + v.valor_venda, 0)
+                      const totalT = vendasFiltradas.reduce((s,v) => s + v.preco_tabela, 0)
+                      const descPond = totalT > 0 ? (totalT - totalV) / totalT : 0
+                      const limite = filtroVendedor !== 'todos'
+                        ? (VENDEDORES_CONFIG.find(x => x.nome === filtroVendedor)?.limiteDesconto ?? 0.12)
+                        : null
+                      const ok = limite !== null && descPond < limite
+                      return (
+                        <span className={`font-bold text-sm ${ok ? 'text-green-600' : limite !== null ? 'text-red-500' : 'text-gray-600'}`}>
+                          {formatPercent(descPond)}
+                        </span>
+                      )
+                    })()}
+                  </td>
+                  <td className="px-3 py-3">
+                    {(() => {
+                      if (filtroVendedor === 'todos') {
+                        // Soma os extras de cada vendedor separadamente
+                        const totalExtra = VENDEDORES_CONFIG.reduce((acc, vc) => {
+                          const vv = vendasFiltradas.filter(x => x.vendedor_nome === vc.nome)
+                          const totalV = vv.reduce((s, x) => s + x.valor_venda, 0)
+                          const totalT = vv.reduce((s, x) => s + x.preco_tabela, 0)
+                          const descPond = totalT > 0 ? (totalT - totalV) / totalT : 0
+                          return acc + (descPond < vc.limiteDesconto ? totalV * 0.01 : 0)
+                        }, 0)
+                        return <span className="font-bold text-sm text-blue-600">{formatCurrency(totalExtra)}</span>
+                      }
+                      const totalV = vendasFiltradas.reduce((s,v) => s + v.valor_venda, 0)
+                      const totalT = vendasFiltradas.reduce((s,v) => s + v.preco_tabela, 0)
+                      const descPond = totalT > 0 ? (totalT - totalV) / totalT : 0
+                      const limite = VENDEDORES_CONFIG.find(x => x.nome === filtroVendedor)?.limiteDesconto ?? 0.12
+                      const extra = descPond < limite ? totalV * 0.01 : 0
+                      return extra > 0
+                        ? <span className="font-bold text-green-600">{formatCurrency(extra)}</span>
+                        : <span className="text-gray-400 text-xs">R$ 0,00</span>
+                    })()}
                   </td>
                   <td className="px-3 py-3 font-bold text-blue-600 whitespace-nowrap">{formatCurrency(resumo.totalComissoes)}</td>
                   <td />
