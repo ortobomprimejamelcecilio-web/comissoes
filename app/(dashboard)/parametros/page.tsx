@@ -1,240 +1,257 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { formatCurrency, calcularDiasUteis, calcularBeneficio } from '@/lib/commission'
-import { Save, RefreshCw } from 'lucide-react'
+import { VENDEDORES_CONFIG } from '@/lib/config'
+import { Settings, TrendingUp, User, Percent, ChevronDown } from 'lucide-react'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+const SALARIO_BASE = 1620
+const VALOR_DIA_UTIL = 17.20
 
 export default function ParametrosPage() {
   const now = new Date()
   const [mes, setMes] = useState(now.getMonth() + 1)
   const [ano, setAno] = useState(now.getFullYear())
-  const [loading, setLoading] = useState(false)
-  const [salvando, setSalvando] = useState(false)
-  const [sucesso, setSucesso] = useState(false)
 
-  const [form, setForm] = useState({
-    meta: 60000,
-    salario_base: 1620,
-    perc_comissao_base: 2,
-    perc_comissao_extra: 1,
-    perc_premiacao: 1,
-    limite_desconto: 12,
-  })
-
-  // Benefício calculado automaticamente: dias úteis × R$ 17,20
   const diasUteis = useMemo(() => calcularDiasUteis(mes, ano), [mes, ano])
-  const beneficioCalculado = useMemo(() => calcularBeneficio(mes, ano), [mes, ano])
+  const beneficio  = useMemo(() => calcularBeneficio(mes, ano), [mes, ano])
 
-  async function carregarParametros() {
-    setLoading(true)
-    const res = await fetch(`/api/parametros?mes=${mes}&ano=${ano}`)
-    if (res.ok) {
-      const data = await res.json()
-      setForm({
-        meta: data.meta,
-        salario_base: data.salario_base,
-        perc_comissao_base: data.perc_comissao_base * 100,
-        perc_comissao_extra: data.perc_comissao_extra * 100,
-        perc_premiacao: data.perc_premiacao * 100,
-        limite_desconto: data.limite_desconto * 100,
-      })
-    }
-    setLoading(false)
+  const inputSel = {
+    background: 'var(--surface-3)',
+    border: '1px solid var(--border-2)',
+    color: 'var(--text-1)',
+    borderRadius: '12px',
+    padding: '8px 12px',
+    fontSize: '14px',
+    outline: 'none',
   }
-
-  useEffect(() => { carregarParametros() }, [mes, ano])
-
-  async function handleSalvar(e: React.FormEvent) {
-    e.preventDefault()
-    setSalvando(true)
-    setSucesso(false)
-
-    const res = await fetch('/api/parametros', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mes, ano,
-        meta: form.meta,
-        salario_base: form.salario_base,
-        beneficio: beneficioCalculado,
-        perc_comissao_base: form.perc_comissao_base / 100,
-        perc_comissao_extra: form.perc_comissao_extra / 100,
-        perc_premiacao: form.perc_premiacao / 100,
-        limite_desconto: form.limite_desconto / 100,
-      }),
-    })
-
-    if (res.ok) setSucesso(true)
-    setSalvando(false)
-    setTimeout(() => setSucesso(false), 3000)
-  }
-
-  const totalBrutoEstimado = form.salario_base + beneficioCalculado
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-3xl">
+
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Parâmetros</h1>
-        <p className="text-gray-500 text-sm">Configure metas, salários e regras de comissionamento</p>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Parâmetros</h1>
+        <p className="text-sm" style={{ color: 'var(--text-3)' }}>
+          Regras de comissionamento e configurações do sistema
+        </p>
       </div>
 
-      {/* Seletor de Mês/Ano */}
-      <div className="flex gap-3">
-        <select
-          value={mes}
-          onChange={e => setMes(Number(e.target.value))}
-          className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-        >
-          {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-        </select>
+      {/* Seletor de mês/ano */}
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <select
+            value={mes}
+            onChange={e => setMes(Number(e.target.value))}
+            style={{ ...inputSel, paddingRight: '32px', appearance: 'none' }}
+          >
+            {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-3)' }} />
+        </div>
         <input
           type="number"
           value={ano}
           onChange={e => setAno(Number(e.target.value))}
-          className="w-24 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          style={{ ...inputSel, width: '88px' }}
         />
-        <button
-          onClick={carregarParametros}
-          className="px-3 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
-        >
-          <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
-        </button>
       </div>
 
-      {sucesso && (
-        <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm font-medium flex items-center gap-2">
-          ✅ Parâmetros salvos com sucesso para {MESES[mes-1]}/{ano}!
-        </div>
-      )}
-
-      <form onSubmit={handleSalvar} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-
-        {/* Meta */}
-        <div>
-          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center justify-center font-bold">1</span>
-            Meta de Vendas
-          </h3>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Meta Mensal (R$)</label>
-            <input
-              type="number"
-              value={form.meta}
-              onChange={e => setForm(p => ({ ...p, meta: Number(e.target.value) }))}
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">Atual: {formatCurrency(form.meta)}</p>
-          </div>
-        </div>
-
-        <hr className="border-gray-100" />
-
-        {/* Salário e Benefícios */}
-        <div>
-          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs flex items-center justify-center font-bold">2</span>
-            Salário e Benefícios
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Salário Base (R$)</label>
-              <input
-                type="number"
-                value={form.salario_base}
-                onChange={e => setForm(p => ({ ...p, salario_base: Number(e.target.value) }))}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Benefício (calculado automaticamente)</label>
-              <div className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50 text-sm text-green-800 font-semibold">
-                {formatCurrency(beneficioCalculado)}
+      {/* Cards por vendedor */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {VENDEDORES_CONFIG.map((v) => (
+          <div
+            key={v.nome}
+            className="rounded-2xl p-5 space-y-4"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          >
+            {/* Nome */}
+            <div className="flex items-center gap-3">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-sm flex-shrink-0"
+                style={{ background: 'var(--accent)' }}
+              >
+                {v.nome.charAt(0)}
               </div>
-              <p className="text-xs text-gray-400 mt-1">{diasUteis} dias úteis × R$ 17,20</p>
+              <div>
+                <p className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{v.nome}</p>
+                <p className="text-xs" style={{ color: 'var(--text-3)' }}>Vendedor(a)</p>
+              </div>
+            </div>
+
+            {/* Parâmetros individuais */}
+            <div className="space-y-2">
+              <ParamRow label="Meta mensal" value={formatCurrency(v.meta)} accent />
+              <ParamRow label="Limite de desconto" value={`${Math.round(v.limiteDesconto * 100)}%`} />
+              <ParamRow label="Salário base" value={formatCurrency(SALARIO_BASE)} />
+              <ParamRow
+                label={`Benefício — ${mes}/${ano}`}
+                value={formatCurrency(beneficio)}
+                sub={`${diasUteis} dias × R$ ${VALOR_DIA_UTIL.toFixed(2)}`}
+              />
+            </div>
+
+            {/* Estimativa bruto mínimo (sem vendas) */}
+            <div
+              className="rounded-xl px-4 py-3 mt-2"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--text-3)' }}>
+                Piso mensal (sem comissão)
+              </p>
+              <p className="text-xl font-bold" style={{ color: 'var(--accent-fg)' }}>
+                {formatCurrency(SALARIO_BASE + beneficio)}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>
+                salário + benefício, antes do INSS
+              </p>
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* Regras globais */}
+      <div
+        className="rounded-2xl p-5 space-y-4"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <Settings className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+          <h2 className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>Regras de Comissionamento</h2>
         </div>
 
-        <hr className="border-gray-100" />
-
-        {/* Comissões */}
-        <div>
-          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs flex items-center justify-center font-bold">3</span>
-            Regras de Comissionamento
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Comissão Base (%)</label>
-              <input
-                type="number"
-                step="0.1"
-                value={form.perc_comissao_base}
-                onChange={e => setForm(p => ({ ...p, perc_comissao_base: Number(e.target.value) }))}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">Sobre todo valor vendido</p>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Limite de Desconto (%)</label>
-              <input
-                type="number"
-                step="0.1"
-                value={form.limite_desconto}
-                onChange={e => setForm(p => ({ ...p, limite_desconto: Number(e.target.value) }))}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">Abaixo deste % ganha extra</p>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Comissão Extra — Desconto (%)</label>
-              <input
-                type="number"
-                step="0.1"
-                value={form.perc_comissao_extra}
-                onChange={e => setForm(p => ({ ...p, perc_comissao_extra: Number(e.target.value) }))}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">+% se desconto &lt; limite</p>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Premiação — Meta (%)</label>
-              <input
-                type="number"
-                step="0.1"
-                value={form.perc_premiacao}
-                onChange={e => setForm(p => ({ ...p, perc_premiacao: Number(e.target.value) }))}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">+% sobre total se bater meta</p>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <RegrasCard
+            numero="1"
+            titulo="Comissão Base"
+            valor="2%"
+            desc="Sobre cada venda realizada"
+            cor="accent"
+          />
+          <RegrasCard
+            numero="2"
+            titulo="Bônus Desconto"
+            valor="+1%"
+            desc={`Se desconto < limite do vendedor`}
+            cor="warn"
+          />
+          <RegrasCard
+            numero="3"
+            titulo="Premiação Meta"
+            valor="+1%"
+            desc="Se total de vendas ≥ meta"
+            cor="accent"
+          />
         </div>
 
-        {/* Resumo das regras */}
-        <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-          <p className="text-xs font-semibold text-blue-700 mb-2">📋 RESUMO DAS REGRAS CONFIGURADAS</p>
-          <ul className="text-xs text-blue-600 space-y-1">
-            <li>• Comissão base de <strong>{form.perc_comissao_base}%</strong> sobre cada venda</li>
-            <li>• <strong>+{form.perc_comissao_extra}%</strong> extra em vendas com desconto abaixo de <strong>{form.limite_desconto}%</strong></li>
-            <li>• <strong>+{form.perc_premiacao}%</strong> de premiação se total vendas ≥ <strong>{formatCurrency(form.meta)}</strong></li>
-            <li>• Salário base: <strong>{formatCurrency(form.salario_base)}</strong> + Benefício: <strong>{formatCurrency(beneficioCalculado)}</strong> ({diasUteis}d × R$ 17,20)</li>
-            <li>• INSS progressivo deduzido do total (salário + comissões)</li>
+        <div
+          className="rounded-xl p-4 space-y-2"
+          style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>
+            Resumo das regras
+          </p>
+          <ul className="text-sm space-y-1.5" style={{ color: 'var(--text-2)' }}>
+            <li>• Comissão base de <strong style={{ color: 'var(--text-1)' }}>2%</strong> sobre todo valor vendido</li>
+            <li>• <strong style={{ color: 'var(--accent-fg)' }}>+1%</strong> extra em vendas com desconto abaixo do limite individual</li>
+            <li>• <strong style={{ color: 'var(--accent-fg)' }}>+1%</strong> de premiação se total de vendas ≥ meta do mês</li>
+            <li>• INSS progressivo calculado sobre salário base + comissões</li>
+            <li>• Benefício ({diasUteis} dias úteis × R$ {VALOR_DIA_UTIL.toFixed(2)}) não entra na base INSS</li>
           </ul>
         </div>
+      </div>
 
-        <button
-          type="submit"
-          disabled={salvando}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold disabled:opacity-60 transition-all"
-          style={{ background: '#2563eb' }}
+      {/* Tabela INSS */}
+      <div
+        className="rounded-2xl p-5"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <Percent className="w-4 h-4" style={{ color: 'var(--danger)' }} />
+          <h2 className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>Tabela INSS Progressiva 2025</h2>
+        </div>
+
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border-2)' }}>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>Faixa</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>Alíquota</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { faixa: 'Até R$ 1.518,00',             ali: '7,5%' },
+                { faixa: 'R$ 1.518,01 → R$ 2.793,88',   ali: '9,0%' },
+                { faixa: 'R$ 2.793,89 → R$ 4.190,83',   ali: '12,0%' },
+                { faixa: 'R$ 4.190,84 → R$ 8.157,41',   ali: '14,0%' },
+              ].map((row, i) => (
+                <tr
+                  key={i}
+                  style={{ borderBottom: i < 3 ? '1px solid var(--border)' : 'none' }}
+                >
+                  <td className="px-4 py-2.5" style={{ color: 'var(--text-2)' }}>{row.faixa}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold" style={{ color: 'var(--danger)' }}>{row.ali}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-xs mt-3" style={{ color: 'var(--text-3)' }}>
+          Cálculo progressivo: cada faixa de salário é tributada separadamente pela sua alíquota.
+        </p>
+      </div>
+
+    </div>
+  )
+}
+
+function ParamRow({ label, value, sub, accent }: {
+  label: string; value: string; sub?: string; accent?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-xs" style={{ color: 'var(--text-3)' }}>{label}</span>
+      <div className="text-right">
+        <span
+          className="text-sm font-semibold"
+          style={{ color: accent ? 'var(--accent-fg)' : 'var(--text-1)' }}
         >
-          <Save className="w-4 h-4" />
-          {salvando ? 'Salvando...' : `Salvar Parâmetros — ${MESES[mes-1]}/${ano}`}
-        </button>
-      </form>
+          {value}
+        </span>
+        {sub && <p className="text-xs" style={{ color: 'var(--text-4)' }}>{sub}</p>}
+      </div>
+    </div>
+  )
+}
+
+function RegrasCard({ numero, titulo, valor, desc, cor }: {
+  numero: string; titulo: string; valor: string; desc: string; cor: 'accent' | 'warn'
+}) {
+  const colors = {
+    accent: { bg: 'var(--accent-dim)', border: 'var(--accent)', text: 'var(--accent-fg)' },
+    warn:   { bg: 'var(--warn-dim)',   border: 'var(--warn)',   text: 'var(--warn)'       },
+  }[cor]
+
+  return (
+    <div
+      className="rounded-xl p-4"
+      style={{ background: colors.bg, border: `1px solid ${colors.border}` }}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <p className="text-xs font-semibold" style={{ color: colors.text }}>{titulo}</p>
+        <span
+          className="text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold"
+          style={{ background: colors.border, color: '#fff', opacity: 0.8 }}
+        >
+          {numero}
+        </span>
+      </div>
+      <p className="text-2xl font-black" style={{ color: colors.text }}>{valor}</p>
+      <p className="text-xs mt-1 leading-tight" style={{ color: colors.text, opacity: 0.7 }}>{desc}</p>
     </div>
   )
 }

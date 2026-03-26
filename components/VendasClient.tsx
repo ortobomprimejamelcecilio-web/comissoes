@@ -47,7 +47,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
   const [filtroVendedor, setFiltroVendedor] = useState<string>('todos')
 
   const formVazio = {
-    vendedor_nome: VENDEDORES_CONFIG[0].nome,
+    vendedor_nome: VENDEDORES_CONFIG[0].nome as string,
     cliente: '',
     canal: 'LOJA',
     data_venda: format(new Date(), 'yyyy-MM-dd'),
@@ -69,7 +69,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
   function abrirEdicao(v: Venda) {
     setEditingId(v.id)
     setForm({
-      vendedor_nome: v.vendedor_nome ?? VENDEDORES_CONFIG[0].nome,
+      vendedor_nome: v.vendedor_nome ?? (VENDEDORES_CONFIG[0].nome as string),
       cliente: v.cliente,
       canal: v.canal,
       data_venda: v.data_venda,
@@ -176,18 +176,34 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
     if (res.ok) setVendas(prev => prev.filter(v => v.id !== id))
   }
 
+  const inputStyle = {
+    background: 'var(--surface-3)',
+    border: '1px solid var(--border-2)',
+    color: 'var(--text-1)',
+    borderRadius: '12px',
+    padding: '8px 12px',
+    width: '100%',
+    fontSize: '14px',
+    outline: 'none',
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Vendas</h1>
-          <p className="text-gray-500 text-sm">{MESES[mes-1]} de {ano} — {vendas.length} registro{vendas.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Vendas</h1>
+          <p className="text-sm" style={{ color: 'var(--text-3)' }}>
+            {MESES[mes-1]} de {ano} — {vendas.length} registro{vendas.length !== 1 ? 's' : ''}
+          </p>
         </div>
         <button
           onClick={showForm ? fecharForm : abrirNovo}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white font-semibold text-sm transition-all active:scale-95"
-          style={{ background: showForm ? 'rgba(220,38,38,0.5)' : 'rgba(37,99,235,0.5)', backdropFilter: 'blur(4px)' }}
+          style={{
+            background: showForm ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.5)',
+            backdropFilter: 'blur(4px)',
+          }}
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? 'Fechar' : '+ Venda'}
@@ -196,64 +212,79 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
 
       {/* Formulário de Nova Venda */}
       {showForm && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            {editingId ? <Pencil className="w-4 h-4 text-blue-600" /> : <Plus className="w-4 h-4 text-blue-600" />}
+        <div
+          className="rounded-2xl p-6"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+        >
+          <h2 className="font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--text-1)' }}>
+            {editingId
+              ? <Pencil className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+              : <Plus className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+            }
             {editingId ? 'Editar Venda' : 'Registrar Nova Venda'}
           </h2>
 
           {erro && (
-            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{erro}</div>
+            <div
+              className="mb-4 p-3 rounded-lg text-sm"
+              style={{
+                background: 'var(--danger-dim)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                color: 'var(--danger)',
+              }}
+            >
+              {erro}
+            </div>
           )}
 
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
             {/* Vendedor */}
             <div className="col-span-1">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Vendedor *</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-3)' }}>Vendedor *</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-3)' }} />
                 <select
                   required
                   value={form.vendedor_nome}
                   onChange={e => setForm(p => ({ ...p, vendedor_nome: e.target.value }))}
-                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  style={{ ...inputStyle, paddingLeft: '36px' }}
                 >
                   {VENDEDORES_CONFIG.map(v => (
                     <option key={v.nome} value={v.nome}>{v.nome}</option>
                   ))}
                 </select>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Limite desconto: {Math.round(limiteAtual * 100)}%</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>Limite desconto: {Math.round(limiteAtual * 100)}%</p>
             </div>
 
             <div className="col-span-1 sm:col-span-2 lg:col-span-1">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Nome do Cliente *</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-3)' }}>Nome do Cliente *</label>
               <input
                 required
                 value={form.cliente}
                 onChange={e => setForm(p => ({ ...p, cliente: e.target.value.toUpperCase() }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                style={{ ...inputStyle }}
                 placeholder="NOME DO CLIENTE"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Nº Pedido</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-3)' }}>Nº Pedido</label>
               <input
                 value={form.numero_pedido}
                 onChange={e => setForm(p => ({ ...p, numero_pedido: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ ...inputStyle }}
                 placeholder="Ex: 12345"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Canal *</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-3)' }}>Canal *</label>
               <select
                 value={form.canal}
                 onChange={e => setForm(p => ({ ...p, canal: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ ...inputStyle }}
               >
                 <option value="LOJA">LOJA</option>
                 <option value="INTERNET">INTERNET</option>
@@ -261,18 +292,18 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Data da Venda *</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-3)' }}>Data da Venda *</label>
               <input
                 type="date"
                 required
                 value={form.data_venda}
                 onChange={e => setForm(p => ({ ...p, data_venda: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ ...inputStyle }}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Valor da Venda (R$) *</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-3)' }}>Valor da Venda (R$) *</label>
               <input
                 type="number"
                 required
@@ -280,13 +311,13 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                 step="0.01"
                 value={form.valor_venda}
                 onChange={e => setForm(p => ({ ...p, valor_venda: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ ...inputStyle }}
                 placeholder="0,00"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Preço Tabela (R$) *</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-3)' }}>Preço Tabela (R$) *</label>
               <input
                 type="number"
                 required
@@ -294,7 +325,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                 step="0.01"
                 value={form.preco_tabela}
                 onChange={e => setForm(p => ({ ...p, preco_tabela: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ ...inputStyle }}
                 placeholder="0,00"
               />
             </div>
@@ -302,15 +333,18 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
             {/* Preview de Comissão */}
             {preview && (
               <div className="col-span-1 sm:col-span-2 lg:col-span-3">
-                <div className={`p-3 rounded-xl border text-sm ${
-                  preview.percDesconto < limiteAtual
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-yellow-50 border-yellow-200'
-                }`}>
+                <div
+                  className="p-3 rounded-xl text-sm"
+                  style={
+                    preview.percDesconto < limiteAtual
+                      ? { background: 'var(--accent-dim)', border: '1px solid var(--accent)', color: 'var(--accent-fg)' }
+                      : { background: 'var(--warn-dim)', border: '1px solid var(--warn)', color: 'var(--warn)' }
+                  }
+                >
                   <div className="flex items-center gap-2 mb-1.5">
                     {preview.percDesconto < limiteAtual
-                      ? <CheckCircle className="w-4 h-4 text-green-600" />
-                      : <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                      ? <CheckCircle className="w-4 h-4" />
+                      : <AlertTriangle className="w-4 h-4" />
                     }
                     <span className="font-semibold">
                       {preview.percDesconto < limiteAtual
@@ -319,10 +353,10 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                       }
                     </span>
                   </div>
-                  <div className="flex gap-6 text-xs text-gray-600">
+                  <div className="flex gap-6 text-xs opacity-80">
                     <span>Comissão base: <strong>{formatCurrency(preview.comissaoBase)}</strong></span>
                     <span>Extra: <strong>{formatCurrency(preview.comissaoExtraDesconto)}</strong></span>
-                    <span className="font-bold text-gray-800">Total: <strong>{formatCurrency(preview.totalComissaoVenda)}</strong></span>
+                    <span className="font-bold">Total: <strong>{formatCurrency(preview.totalComissaoVenda)}</strong></span>
                   </div>
                 </div>
               </div>
@@ -332,15 +366,24 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 rounded-xl text-white font-semibold text-sm disabled:opacity-60"
-                style={{ background: '#2563eb' }}
+                className="px-6 py-2.5 rounded-xl text-white font-semibold text-sm disabled:opacity-60 transition-all"
+                style={{ background: 'var(--accent)' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--accent-2)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--accent)'}
               >
                 {loading ? 'Salvando...' : editingId ? 'Salvar Edição' : 'Salvar Venda'}
               </button>
               <button
                 type="button"
                 onClick={fecharForm}
-                className="px-6 py-2.5 rounded-xl font-semibold text-sm border border-gray-200 text-gray-600 hover:bg-gray-50"
+                className="px-6 py-2.5 rounded-xl font-semibold text-sm transition-all"
+                style={{
+                  border: '1px solid var(--border-2)',
+                  color: 'var(--text-2)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
               >
                 Cancelar
               </button>
@@ -351,99 +394,146 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
 
       {/* Filtro por vendedor */}
       <div className="flex gap-2">
-        {[{ nome: 'Todos' }, ...VENDEDORES_CONFIG].map(v => (
-          <button
-            key={v.nome}
-            onClick={() => setFiltroVendedor(v.nome === 'Todos' ? 'todos' : v.nome)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              (v.nome === 'Todos' ? filtroVendedor === 'todos' : filtroVendedor === v.nome)
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {v.nome}
-          </button>
-        ))}
+        {[{ nome: 'Todos' }, ...VENDEDORES_CONFIG].map(v => {
+          const isActive = v.nome === 'Todos' ? filtroVendedor === 'todos' : filtroVendedor === v.nome
+          return (
+            <button
+              key={v.nome}
+              onClick={() => setFiltroVendedor(v.nome === 'Todos' ? 'todos' : v.nome)}
+              className="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
+              style={{
+                background: isActive ? 'var(--accent-dim)' : 'var(--surface-2)',
+                color: isActive ? 'var(--accent-fg)' : 'var(--text-2)',
+              }}
+            >
+              {v.nome}
+            </button>
+          )
+        })}
       </div>
 
       {/* Tabela de Vendas */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-5 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800">
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+      >
+        <div className="p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+          <h2 className="font-semibold" style={{ color: 'var(--text-1)' }}>
             {filtroVendedor === 'todos' ? 'Todas as Vendas' : filtroVendedor} — {vendasFiltradas.length} registro{vendasFiltradas.length !== 1 ? 's' : ''}
           </h2>
         </div>
 
         {vendasFiltradas.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">
-            <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <div className="p-12 text-center" style={{ color: 'var(--text-3)' }}>
+            <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-20" />
             <p className="font-medium">Nenhuma venda registrada</p>
-            <p className="text-sm">Clique em "Nova Venda" para começar</p>
+            <p className="text-sm">Clique em &quot;+ Venda&quot; para começar</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
+                <tr style={{ borderBottom: '1px solid var(--border-2)' }}>
                   {['Pedido','Vendedor','Data','Cliente','Canal','Valor','Tabela','% Desc','Extra 1%','Comissão','Ações'].map(h => (
-                    <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    <th
+                      key={h}
+                      className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap"
+                      style={{ color: 'var(--text-3)' }}
+                    >
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {vendasFiltradas.map((v, i) => {
+                {vendasFiltradas.map((v) => {
                   const limite = VENDEDORES_CONFIG.find(x => x.nome === v.vendedor_nome)?.limiteDesconto ?? 0.12
                   const calc = calcularComissaoVenda(v.valor_venda, v.preco_tabela, limite)
                   const descOk = calc.percDesconto < limite
                   return (
-                    <tr key={v.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                      <td className="px-3 py-3 font-mono text-gray-700 text-xs font-semibold">
-                        {v.numero_pedido || <span className="text-gray-300">—</span>}
+                    <tr
+                      key={v.id}
+                      style={{ borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                    >
+                      <td className="px-3 py-3 font-mono text-xs font-semibold" style={{ color: 'var(--text-2)' }}>
+                        {v.numero_pedido || <span style={{ color: 'var(--text-4)' }}>—</span>}
                       </td>
                       <td className="px-3 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${
-                          v.vendedor_nome === 'Robson Brito' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'
-                        }`}>
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                          style={
+                            v.vendedor_nome === 'Robson Brito'
+                              ? { background: 'var(--accent-dim)', color: 'var(--accent-fg)' }
+                              : { background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }
+                          }
+                        >
                           {v.vendedor_nome.split(' ')[0]}
                         </span>
                       </td>
-                      <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
+                      <td className="px-3 py-3 whitespace-nowrap" style={{ color: 'var(--text-2)' }}>
                         {format(new Date(v.data_venda + 'T12:00:00'), 'dd/MM/yyyy')}
                       </td>
-                      <td className="px-3 py-3 font-medium text-gray-800 uppercase">{v.cliente}</td>
+                      <td className="px-3 py-3 font-medium uppercase" style={{ color: 'var(--text-1)' }}>{v.cliente}</td>
                       <td className="px-3 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          v.canal === 'LOJA' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
-                        }`}>{v.canal}</span>
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={
+                            v.canal === 'LOJA'
+                              ? { background: 'var(--accent-dim)', color: 'var(--accent-fg)' }
+                              : { background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }
+                          }
+                        >
+                          {v.canal}
+                        </span>
                       </td>
-                      <td className="px-3 py-3 font-semibold text-gray-900">{formatCurrency(v.valor_venda)}</td>
-                      <td className="px-3 py-3 text-gray-500">{formatCurrency(v.preco_tabela)}</td>
+                      <td className="px-3 py-3 font-semibold" style={{ color: 'var(--text-1)' }}>{formatCurrency(v.valor_venda)}</td>
+                      <td className="px-3 py-3" style={{ color: 'var(--text-3)' }}>{formatCurrency(v.preco_tabela)}</td>
                       <td className="px-3 py-3">
-                        <span className={`font-medium ${descOk ? 'text-green-600' : 'text-red-500'}`}>
+                        <span className="font-medium" style={{ color: descOk ? 'var(--accent-fg)' : 'var(--danger)' }}>
                           {formatPercent(calc.percDesconto)}
                         </span>
                       </td>
                       <td className="px-3 py-3 text-center">
                         {descOk
-                          ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />
-                          : <XCircle className="w-4 h-4 text-gray-300 mx-auto" />
+                          ? <CheckCircle className="w-4 h-4 mx-auto" style={{ color: 'var(--accent)' }} />
+                          : <XCircle className="w-4 h-4 mx-auto" style={{ color: 'var(--text-4)' }} />
                         }
                       </td>
-                      <td className="px-3 py-3 font-semibold text-blue-600 whitespace-nowrap">
+                      <td className="px-3 py-3 font-semibold whitespace-nowrap" style={{ color: 'var(--accent-fg)' }}>
                         {formatCurrency(calc.totalComissaoVenda)}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => abrirEdicao(v)}
-                            className="text-blue-400 hover:text-blue-600 transition-colors p-1 rounded-lg hover:bg-blue-50"
+                            className="p-1 rounded-lg transition-colors"
+                            style={{ color: 'var(--text-3)' }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLElement).style.color = 'var(--accent-fg)'
+                              ;(e.currentTarget as HTMLElement).style.background = 'var(--accent-dim)'
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'
+                              ;(e.currentTarget as HTMLElement).style.background = 'transparent'
+                            }}
                             title="Editar"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDelete(v.id)}
-                            className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50"
+                            className="p-1 rounded-lg transition-colors"
+                            style={{ color: 'var(--text-3)' }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLElement).style.color = 'var(--danger)'
+                              ;(e.currentTarget as HTMLElement).style.background = 'var(--danger-dim)'
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'
+                              ;(e.currentTarget as HTMLElement).style.background = 'transparent'
+                            }}
                             title="Excluir"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -466,32 +556,32 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                   const extra1pct = extraOk ? totalV * 0.01 : 0
                   const comBase = vv.reduce((s, x) => s + x.valor_venda * 0.02, 0)
                   return (
-                    <tr key={vc.nome} className="border-t border-gray-200 bg-gray-50/70">
-                      <td colSpan={5} className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
+                    <tr key={vc.nome} style={{ background: 'var(--surface-2)', borderTop: '1px solid var(--border)' }}>
+                      <td colSpan={5} className="px-3 py-2 text-xs font-semibold uppercase" style={{ color: 'var(--text-3)' }}>
                         {vc.nome.split(' ')[0]} (lim {Math.round(vc.limiteDesconto * 100)}%)
                       </td>
-                      <td className="px-3 py-2 font-semibold text-gray-800 text-sm">{formatCurrency(totalV)}</td>
-                      <td className="px-3 py-2 text-gray-400 text-xs">{formatCurrency(totalT)}</td>
-                      <td className={`px-3 py-2 font-semibold text-sm ${extraOk ? 'text-green-600' : 'text-red-500'}`}>
+                      <td className="px-3 py-2 font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{formatCurrency(totalV)}</td>
+                      <td className="px-3 py-2 text-xs" style={{ color: 'var(--text-3)' }}>{formatCurrency(totalT)}</td>
+                      <td className="px-3 py-2 font-semibold text-sm" style={{ color: extraOk ? 'var(--accent-fg)' : 'var(--danger)' }}>
                         {formatPercent(descPond)}
                       </td>
                       <td className="px-3 py-2 text-sm">
                         {extraOk
-                          ? <span className="text-green-600 font-semibold">{formatCurrency(extra1pct)}</span>
-                          : <span className="text-gray-400 text-xs">R$ 0,00</span>
+                          ? <span className="font-semibold" style={{ color: 'var(--accent-fg)' }}>{formatCurrency(extra1pct)}</span>
+                          : <span className="text-xs" style={{ color: 'var(--text-3)' }}>R$ 0,00</span>
                         }
                       </td>
-                      <td className="px-3 py-2 font-bold text-blue-600 text-sm whitespace-nowrap">{formatCurrency(comBase + extra1pct)}</td>
+                      <td className="px-3 py-2 font-bold text-sm whitespace-nowrap" style={{ color: 'var(--accent-fg)' }}>{formatCurrency(comBase + extra1pct)}</td>
                       <td />
                     </tr>
                   )
                 })}
 
                 {/* Linha de total geral */}
-                <tr className="border-t-2 border-gray-300 bg-gray-100">
-                  <td colSpan={5} className="px-3 py-3 font-bold text-gray-700 text-xs uppercase">TOTAIS</td>
-                  <td className="px-3 py-3 font-bold text-gray-900">{formatCurrency(vendasFiltradas.reduce((s,v) => s + v.valor_venda, 0))}</td>
-                  <td className="px-3 py-3 text-gray-400 text-xs">{formatCurrency(vendasFiltradas.reduce((s,v) => s + v.preco_tabela, 0))}</td>
+                <tr style={{ background: 'var(--surface-3)', borderTop: '2px solid var(--border-2)' }}>
+                  <td colSpan={5} className="px-3 py-3 font-bold text-xs uppercase" style={{ color: 'var(--text-1)' }}>TOTAIS</td>
+                  <td className="px-3 py-3 font-bold" style={{ color: 'var(--text-1)' }}>{formatCurrency(vendasFiltradas.reduce((s,v) => s + v.valor_venda, 0))}</td>
+                  <td className="px-3 py-3 text-xs" style={{ color: 'var(--text-3)' }}>{formatCurrency(vendasFiltradas.reduce((s,v) => s + v.preco_tabela, 0))}</td>
                   <td className="px-3 py-3">
                     {(() => {
                       const totalV = vendasFiltradas.reduce((s,v) => s + v.valor_venda, 0)
@@ -502,7 +592,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                         : null
                       const ok = limite !== null && descPond < limite
                       return (
-                        <span className={`font-bold text-sm ${ok ? 'text-green-600' : limite !== null ? 'text-red-500' : 'text-gray-600'}`}>
+                        <span className="font-bold text-sm" style={{ color: ok ? 'var(--accent-fg)' : limite !== null ? 'var(--danger)' : 'var(--text-2)' }}>
                           {formatPercent(descPond)}
                         </span>
                       )
@@ -511,7 +601,6 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                   <td className="px-3 py-3">
                     {(() => {
                       if (filtroVendedor === 'todos') {
-                        // Soma os extras de cada vendedor separadamente
                         const totalExtra = VENDEDORES_CONFIG.reduce((acc, vc) => {
                           const vv = vendasFiltradas.filter(x => x.vendedor_nome === vc.nome)
                           const totalV = vv.reduce((s, x) => s + x.valor_venda, 0)
@@ -519,7 +608,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                           const descPond = totalT > 0 ? (totalT - totalV) / totalT : 0
                           return acc + (descPond < vc.limiteDesconto ? totalV * 0.01 : 0)
                         }, 0)
-                        return <span className="font-bold text-sm text-blue-600">{formatCurrency(totalExtra)}</span>
+                        return <span className="font-bold text-sm" style={{ color: 'var(--accent-fg)' }}>{formatCurrency(totalExtra)}</span>
                       }
                       const totalV = vendasFiltradas.reduce((s,v) => s + v.valor_venda, 0)
                       const totalT = vendasFiltradas.reduce((s,v) => s + v.preco_tabela, 0)
@@ -527,11 +616,11 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                       const limite = VENDEDORES_CONFIG.find(x => x.nome === filtroVendedor)?.limiteDesconto ?? 0.12
                       const extra = descPond < limite ? totalV * 0.01 : 0
                       return extra > 0
-                        ? <span className="font-bold text-green-600">{formatCurrency(extra)}</span>
-                        : <span className="text-gray-400 text-xs">R$ 0,00</span>
+                        ? <span className="font-bold" style={{ color: 'var(--accent-fg)' }}>{formatCurrency(extra)}</span>
+                        : <span className="text-xs" style={{ color: 'var(--text-3)' }}>R$ 0,00</span>
                     })()}
                   </td>
-                  <td className="px-3 py-3 font-bold text-blue-600 whitespace-nowrap">{formatCurrency(resumo.totalComissoes)}</td>
+                  <td className="px-3 py-3 font-bold whitespace-nowrap" style={{ color: 'var(--accent-fg)' }}>{formatCurrency(resumo.totalComissoes)}</td>
                   <td />
                 </tr>
               </tfoot>

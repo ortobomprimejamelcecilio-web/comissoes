@@ -104,17 +104,24 @@ export default function ContrachequeClient({ vendedores, mes, ano }: {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Contracheque</h1>
-          <p className="text-gray-500 text-sm">
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Contracheque</h1>
+          <p className="text-sm" style={{ color: 'var(--text-3)' }}>
             {MESES[mes-1]} de {ano} — {diasUteis} dias úteis · benefício {formatCurrency(atual.parametros.beneficio)}
           </p>
         </div>
         <button
           onClick={handlePrint}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold text-sm"
-          style={{ background: '#1e293b' }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all"
+          style={{
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border-2)',
+            color: 'var(--text-1)',
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-3)'}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
         >
           <Printer className="w-4 h-4" />
           Imprimir
@@ -127,144 +134,151 @@ export default function ContrachequeClient({ vendedores, mes, ano }: {
           <button
             key={v.nome}
             onClick={() => setAbaAtiva(i)}
-            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-              abaAtiva === i ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            className="px-5 py-2 rounded-xl text-sm font-semibold transition-all"
+            style={{
+              background: abaAtiva === i ? 'var(--accent-dim)' : 'var(--surface-2)',
+              color: abaAtiva === i ? 'var(--accent-fg)' : 'var(--text-2)',
+            }}
           >
             {v.nome}
           </button>
         ))}
       </div>
 
-      {/* Holerite */}
-      <div ref={printRef}>
-        <div className="holerite bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden max-w-2xl">
+      {/* Holerite — wrapper dark para contraste, o holerite interno é branco para impressão */}
+      <div
+        className="rounded-2xl p-4"
+        style={{ background: 'var(--surface)' }}
+      >
+        <div ref={printRef}>
+          <div className="holerite bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden max-w-2xl">
 
-          {/* Cabeçalho */}
-          <div className="h-header p-5 flex items-center justify-between" style={{ background: '#1e293b' }}>
-            <div>
-              <h2 className="text-xl font-bold text-white">CONTRACHEQUE</h2>
-              <p className="text-blue-200 text-sm">{MESES[mes-1].toUpperCase()} / {ano}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-white font-semibold text-sm">ComissãoSys</p>
-              <p className="text-blue-300 text-xs">Sistema de Comissionamento</p>
-            </div>
-          </div>
-
-          {/* Dados do Funcionário */}
-          <div className="info-grid grid grid-cols-2 border-b border-gray-200">
-            <InfoCell label="Funcionário" value={atual.nome.toUpperCase()} />
-            <InfoCell label="Competência" value={`${MESES[mes-1]} / ${ano}`} />
-            <InfoCell label="Cargo" value="VENDEDOR(A)" />
-            <InfoCell label="Total de Vendas" value={formatCurrency(resultado.totalVendas)} />
-          </div>
-
-          {/* PROVENTOS */}
-          <div className="sec prov px-5 py-2 text-xs font-bold uppercase tracking-wider border-y bg-green-50 text-green-800 border-green-200">
-            PROVENTOS
-          </div>
-
-          <div className="divide-y divide-gray-50">
-            <RubricaRow desc="Salário Base (Salário Mínimo 2026)" valor={formatCurrency(atual.parametros.salario_base)} tipo="provento" />
-            <RubricaRow
-              desc={`Benefício (${diasUteis} dias úteis × R$ 17,20)`}
-              valor={formatCurrency(atual.parametros.beneficio)}
-              tipo="provento"
-            />
-            <RubricaRow
-              desc={`Comissão Base (2% × ${formatCurrency(resultado.totalVendas)})`}
-              valor={formatCurrency(resultado.totalComissaoBase)}
-              tipo="provento"
-            />
-            <RubricaRow
-              desc={`Comissão Extra (+1% — desc. < ${Math.round(atual.parametros.limite_desconto * 100)}%)`}
-              valor={formatCurrency(resultado.totalComissaoExtraDesconto)}
-              tipo="provento"
-            />
-            <RubricaRow
-              desc={`Premiação de Meta (+1%)${resultado.totalVendas >= atual.parametros.meta ? ' ✅' : ` — falta ${formatCurrency(Math.max(0, atual.parametros.meta - resultado.totalVendas))}`}`}
-              valor={formatCurrency(resultado.premiacao)}
-              tipo="provento"
-              dim={resultado.premiacao === 0}
-            />
-          </div>
-
-          <div className="subtotal flex justify-between px-5 py-2.5 bg-gray-50 border-y border-gray-200">
-            <span className="text-sm font-semibold text-gray-700">Total Bruto</span>
-            <span className="font-bold text-gray-900">{formatCurrency(totalBruto)}</span>
-          </div>
-
-          {/* DESCONTOS */}
-          <div className="sec desc px-5 py-2 text-xs font-bold uppercase tracking-wider border-y bg-red-50 text-red-800 border-red-200">
-            DESCONTOS
-          </div>
-
-          <div>
-            <RubricaRow
-              desc={`INSS Progressivo — Base: ${formatCurrency(baseINSS)} | Alíquota efetiva: ${formatPercent(aliquotaEfetiva)}`}
-              valor={formatCurrency(inss)}
-              tipo="desconto"
-            />
-          </div>
-
-          <div className="inss-grid px-5 py-3 bg-red-50/50">
-            <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide" style={{ gridColumn: '1/-1' }}>Tabela INSS (Progressiva)</p>
-            {FAIXAS_INSS.map((f, i) => (
-              <div key={i} className="inss-row flex justify-between text-xs bg-white px-2 py-1 rounded border border-red-100">
-                <span className="text-gray-600">{f.faixa}</span>
-                <span className="font-bold text-red-600 ali">{f.aliquota}</span>
+            {/* Cabeçalho */}
+            <div className="h-header p-5 flex items-center justify-between" style={{ background: '#1e293b' }}>
+              <div>
+                <h2 className="text-xl font-bold text-white">CONTRACHEQUE</h2>
+                <p className="text-blue-200 text-sm">{MESES[mes-1].toUpperCase()} / {ano}</p>
               </div>
-            ))}
-          </div>
-
-          {/* TOTAL LÍQUIDO */}
-          <div className="liquido px-5 py-4 border-t-2 border-gray-900 flex items-center justify-between bg-gradient-to-r from-green-50 to-white">
-            <div>
-              <p className="text-xs text-gray-500 uppercase font-semibold tracking-wide">Total Líquido a Receber</p>
-              <p className="text-xs text-gray-400 mt-0.5">{formatCurrency(totalBruto)} bruto — {formatCurrency(inss)} INSS</p>
+              <div className="text-right">
+                <p className="text-white font-semibold text-sm">ComissãoSys</p>
+                <p className="text-blue-300 text-xs">Sistema de Comissionamento</p>
+              </div>
             </div>
-            <p className="valor text-3xl font-black text-green-600">{formatCurrency(totalLiquido)}</p>
-          </div>
 
-          {/* % Meta */}
-          <div className="meta-bar px-5 py-3 bg-blue-50 border-t border-blue-100">
-            <div className="meta-info flex items-center justify-between text-sm">
-              <span className="text-gray-600 font-medium">% Meta — {formatCurrency(atual.parametros.meta)}</span>
-              <span className={`font-bold ${resultado.totalVendas >= atual.parametros.meta ? 'text-green-600' : 'text-blue-600'}`}>
-                {formatPercent(resultado.totalVendas / atual.parametros.meta)}
-                {resultado.totalVendas >= atual.parametros.meta ? ' 🎉' : ''}
-              </span>
+            {/* Dados do Funcionário */}
+            <div className="info-grid grid grid-cols-2 border-b border-gray-200">
+              <InfoCell label="Funcionário" value={atual.nome.toUpperCase()} />
+              <InfoCell label="Competência" value={`${MESES[mes-1]} / ${ano}`} />
+              <InfoCell label="Cargo" value="VENDEDOR(A)" />
+              <InfoCell label="Total de Vendas" value={formatCurrency(resultado.totalVendas)} />
             </div>
-            <div className="bar-bg mt-2 h-2 bg-blue-100 rounded-full overflow-hidden">
-              <div
-                className="bar-fill h-full rounded-full"
-                style={{
-                  width: `${Math.min((resultado.totalVendas / atual.parametros.meta) * 100, 100)}%`,
-                  background: resultado.totalVendas >= atual.parametros.meta ? '#16a34a' : '#2563eb',
-                }}
+
+            {/* PROVENTOS */}
+            <div className="sec prov px-5 py-2 text-xs font-bold uppercase tracking-wider border-y bg-green-50 text-green-800 border-green-200">
+              PROVENTOS
+            </div>
+
+            <div className="divide-y divide-gray-50">
+              <RubricaRow desc="Salário Base (Salário Mínimo 2026)" valor={formatCurrency(atual.parametros.salario_base)} tipo="provento" />
+              <RubricaRow
+                desc={`Benefício (${diasUteis} dias úteis × R$ 17,20)`}
+                valor={formatCurrency(atual.parametros.beneficio)}
+                tipo="provento"
+              />
+              <RubricaRow
+                desc={`Comissão Base (2% × ${formatCurrency(resultado.totalVendas)})`}
+                valor={formatCurrency(resultado.totalComissaoBase)}
+                tipo="provento"
+              />
+              <RubricaRow
+                desc={`Comissão Extra (+1% — desc. < ${Math.round(atual.parametros.limite_desconto * 100)}%)`}
+                valor={formatCurrency(resultado.totalComissaoExtraDesconto)}
+                tipo="provento"
+              />
+              <RubricaRow
+                desc={`Premiação de Meta (+1%)${resultado.totalVendas >= atual.parametros.meta ? ' ✅' : ` — falta ${formatCurrency(Math.max(0, atual.parametros.meta - resultado.totalVendas))}`}`}
+                valor={formatCurrency(resultado.premiacao)}
+                tipo="provento"
+                dim={resultado.premiacao === 0}
               />
             </div>
-          </div>
 
-          {/* Assinaturas */}
-          <div className="assinaturas grid grid-cols-2 gap-8 px-5 py-6 border-t border-gray-200">
-            <div className="ass text-center">
-              <div className="border-t border-gray-400 pt-2">
-                <p className="text-xs text-gray-600 font-medium">Assinatura do Funcionário</p>
-                <p className="text-xs text-gray-400 mt-0.5">{atual.nome.toUpperCase()}</p>
+            <div className="subtotal flex justify-between px-5 py-2.5 bg-gray-50 border-y border-gray-200">
+              <span className="text-sm font-semibold text-gray-700">Total Bruto</span>
+              <span className="font-bold text-gray-900">{formatCurrency(totalBruto)}</span>
+            </div>
+
+            {/* DESCONTOS */}
+            <div className="sec desc px-5 py-2 text-xs font-bold uppercase tracking-wider border-y bg-red-50 text-red-800 border-red-200">
+              DESCONTOS
+            </div>
+
+            <div>
+              <RubricaRow
+                desc={`INSS Progressivo — Base: ${formatCurrency(baseINSS)} | Alíquota efetiva: ${formatPercent(aliquotaEfetiva)}`}
+                valor={formatCurrency(inss)}
+                tipo="desconto"
+              />
+            </div>
+
+            <div className="inss-grid px-5 py-3 bg-red-50/50">
+              <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide" style={{ gridColumn: '1/-1' }}>Tabela INSS (Progressiva)</p>
+              {FAIXAS_INSS.map((f, i) => (
+                <div key={i} className="inss-row flex justify-between text-xs bg-white px-2 py-1 rounded border border-red-100">
+                  <span className="text-gray-600">{f.faixa}</span>
+                  <span className="font-bold text-red-600 ali">{f.aliquota}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* TOTAL LÍQUIDO */}
+            <div className="liquido px-5 py-4 border-t-2 border-gray-900 flex items-center justify-between bg-gradient-to-r from-green-50 to-white">
+              <div>
+                <p className="text-xs text-gray-500 uppercase font-semibold tracking-wide">Total Líquido a Receber</p>
+                <p className="text-xs text-gray-400 mt-0.5">{formatCurrency(totalBruto)} bruto — {formatCurrency(inss)} INSS</p>
+              </div>
+              <p className="valor text-3xl font-black text-green-600">{formatCurrency(totalLiquido)}</p>
+            </div>
+
+            {/* % Meta */}
+            <div className="meta-bar px-5 py-3 bg-blue-50 border-t border-blue-100">
+              <div className="meta-info flex items-center justify-between text-sm">
+                <span className="text-gray-600 font-medium">% Meta — {formatCurrency(atual.parametros.meta)}</span>
+                <span className={`font-bold ${resultado.totalVendas >= atual.parametros.meta ? 'text-green-600' : 'text-blue-600'}`}>
+                  {formatPercent(resultado.totalVendas / atual.parametros.meta)}
+                  {resultado.totalVendas >= atual.parametros.meta ? ' 🎉' : ''}
+                </span>
+              </div>
+              <div className="bar-bg mt-2 h-2 bg-blue-100 rounded-full overflow-hidden">
+                <div
+                  className="bar-fill h-full rounded-full"
+                  style={{
+                    width: `${Math.min((resultado.totalVendas / atual.parametros.meta) * 100, 100)}%`,
+                    background: resultado.totalVendas >= atual.parametros.meta ? '#16a34a' : '#2563eb',
+                  }}
+                />
               </div>
             </div>
-            <div className="ass text-center">
-              <div className="border-t border-gray-400 pt-2">
-                <p className="text-xs text-gray-600 font-medium">Assinatura do Empregador</p>
-                <p className="text-xs text-gray-400 mt-0.5">DATA: ___/___/______</p>
+
+            {/* Assinaturas */}
+            <div className="assinaturas grid grid-cols-2 gap-8 px-5 py-6 border-t border-gray-200">
+              <div className="ass text-center">
+                <div className="border-t border-gray-400 pt-2">
+                  <p className="text-xs text-gray-600 font-medium">Assinatura do Funcionário</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{atual.nome.toUpperCase()}</p>
+                </div>
+              </div>
+              <div className="ass text-center">
+                <div className="border-t border-gray-400 pt-2">
+                  <p className="text-xs text-gray-600 font-medium">Assinatura do Empregador</p>
+                  <p className="text-xs text-gray-400 mt-0.5">DATA: ___/___/______</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="rodape px-5 py-2 border-t border-gray-100 bg-gray-50 text-center">
-            <p className="text-xs text-gray-400">ComissãoSys — {MESES[mes-1]}/{ano} — Confidencial</p>
+            <div className="rodape px-5 py-2 border-t border-gray-100 bg-gray-50 text-center">
+              <p className="text-xs text-gray-400">ComissãoSys — {MESES[mes-1]}/{ano} — Confidencial</p>
+            </div>
           </div>
         </div>
       </div>
