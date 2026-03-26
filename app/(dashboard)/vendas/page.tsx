@@ -17,6 +17,7 @@ export default async function VendasPage() {
     .select('*')
     .eq('mes', mes)
     .eq('ano', ano)
+    .order('data_venda', { ascending: true })
     .order('numero', { ascending: true })
 
   const { data: ultimaVenda } = await supabase
