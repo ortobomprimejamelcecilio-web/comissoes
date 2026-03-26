@@ -312,7 +312,7 @@ export default function RelatorioClient() {
                               </td>
                               <td className="px-3 py-2.5">
                                 <span className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
-                                  style={v.vendedor_nome === 'Robson Brito'
+                                  style={v.vendedor_nome === 'Robson'
                                     ? { background: 'var(--accent-dim)', color: 'var(--accent-fg)' }
                                     : { background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }
                                   }>
@@ -516,7 +516,7 @@ export default function RelatorioClient() {
                             </td>
                             <td className="px-3 py-2.5">
                               <span className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
-                                style={l.vendedor === 'Robson Brito'
+                                style={l.vendedor === 'Robson'
                                   ? { background: 'var(--accent-dim)', color: 'var(--accent-fg)' }
                                   : { background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }
                                 }>

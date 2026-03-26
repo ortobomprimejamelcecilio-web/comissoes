@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       mes,
       ano,
       vendedor_id: user.id,
-      vendedor_nome: vendedor_nome ?? 'Robson Brito',
+      vendedor_nome: vendedor_nome ?? 'Regiane',
     })
     .select()
     .single()
