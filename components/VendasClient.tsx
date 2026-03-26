@@ -348,7 +348,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {['Nº','Pedido','Vendedor','Data','Cliente','Canal','Valor','Tabela','% Desc','Extra','Comissão','Ações'].map(h => (
+                  {['Pedido','Vendedor','Data','Cliente','Canal','Valor','Tabela','% Desc','Extra 1%','Comissão','Ações'].map(h => (
                     <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -360,7 +360,6 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                   const descOk = calc.percDesconto < limite
                   return (
                     <tr key={v.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                      <td className="px-3 py-3 font-mono text-gray-500 text-xs">{v.numero}</td>
                       <td className="px-3 py-3 font-mono text-gray-700 text-xs font-semibold">
                         {v.numero_pedido || <span className="text-gray-300">—</span>}
                       </td>
@@ -421,7 +420,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                   const comBase = vv.reduce((s, x) => s + x.valor_venda * 0.02, 0)
                   return (
                     <tr key={vc.nome} className="border-t border-gray-200 bg-gray-50/70">
-                      <td colSpan={6} className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
+                      <td colSpan={5} className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
                         {vc.nome.split(' ')[0]} (lim {Math.round(vc.limiteDesconto * 100)}%)
                       </td>
                       <td className="px-3 py-2 font-semibold text-gray-800 text-sm">{formatCurrency(totalV)}</td>
@@ -443,7 +442,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
 
                 {/* Linha de total geral */}
                 <tr className="border-t-2 border-gray-300 bg-gray-100">
-                  <td colSpan={6} className="px-3 py-3 font-bold text-gray-700 text-xs uppercase">TOTAIS</td>
+                  <td colSpan={5} className="px-3 py-3 font-bold text-gray-700 text-xs uppercase">TOTAIS</td>
                   <td className="px-3 py-3 font-bold text-gray-900">{formatCurrency(vendasFiltradas.reduce((s,v) => s + v.valor_venda, 0))}</td>
                   <td className="px-3 py-3 text-gray-400 text-xs">{formatCurrency(vendasFiltradas.reduce((s,v) => s + v.preco_tabela, 0))}</td>
                   <td className="px-3 py-3">
