@@ -143,19 +143,9 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Vendas</h1>
-          <p className="text-gray-500 text-sm">{MESES[mes-1]} de {ano} — {vendas.length} registro{vendas.length !== 1 ? 's' : ''}</p>
-        </div>
-        <button
-          onClick={() => { setShowForm(!showForm); setErro('') }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold transition-all text-sm"
-          style={{ background: '#2563eb' }}
-        >
-          <Plus className="w-4 h-4" />
-          Nova Venda
-        </button>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Vendas</h1>
+        <p className="text-gray-500 text-sm">{MESES[mes-1]} de {ano} — {vendas.length} registro{vendas.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Formulário de Nova Venda */}
@@ -169,10 +159,10 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
             <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{erro}</div>
           )}
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
             {/* Vendedor */}
-            <div className="col-span-2 lg:col-span-1">
+            <div className="col-span-1">
               <label className="block text-xs font-medium text-gray-600 mb-1">Vendedor *</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -190,7 +180,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
               <p className="text-xs text-gray-400 mt-1">Limite desconto: {Math.round(limiteAtual * 100)}%</p>
             </div>
 
-            <div className="col-span-2 lg:col-span-1">
+            <div className="col-span-1 sm:col-span-2 lg:col-span-1">
               <label className="block text-xs font-medium text-gray-600 mb-1">Nome do Cliente *</label>
               <input
                 required
@@ -264,7 +254,7 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
 
             {/* Preview de Comissão */}
             {preview && (
-              <div className="col-span-2 lg:col-span-3">
+              <div className="col-span-1 sm:col-span-2 lg:col-span-3">
                 <div className={`p-3 rounded-xl border text-sm ${
                   preview.percDesconto < limiteAtual
                     ? 'bg-green-50 border-green-200'
@@ -493,30 +483,19 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
         )}
       </div>
 
-      {/* Resumo Financeiro */}
-      {vendas.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-5 text-white">
-          <h3 className="font-semibold mb-3 opacity-90">Fechamento Parcial — {MESES[mes-1]}/{ano}</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs opacity-70">Total Vendas</p>
-              <p className="font-bold">{formatCurrency(resumo.totalVendas)}</p>
-            </div>
-            <div>
-              <p className="text-xs opacity-70">Total Comissões</p>
-              <p className="font-bold">{formatCurrency(resumo.totalComissoes)}</p>
-            </div>
-            <div>
-              <p className="text-xs opacity-70">INSS Total</p>
-              <p className="font-bold text-red-300">- {formatCurrency(resumo.inss)}</p>
-            </div>
-            <div>
-              <p className="text-xs opacity-70">Total Líquido</p>
-              <p className="text-xl font-bold text-yellow-300">{formatCurrency(resumo.totalLiquido)}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Espaço extra no final para o FAB não sobrepor o conteúdo */}
+      <div className="h-20" />
+
+      {/* Botão flutuante Nova Venda */}
+      <button
+        onClick={() => { setShowForm(!showForm); setErro(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+        className="fixed bottom-6 right-4 z-50 flex items-center gap-1.5 px-4 py-3 rounded-2xl text-white font-bold shadow-xl text-sm transition-all active:scale-95"
+        style={{ background: showForm ? '#dc2626' : '#2563eb' }}
+        aria-label="Nova Venda"
+      >
+        <Plus className="w-5 h-5" />
+        {showForm ? 'Fechar' : 'Venda'}
+      </button>
     </div>
   )
 }
