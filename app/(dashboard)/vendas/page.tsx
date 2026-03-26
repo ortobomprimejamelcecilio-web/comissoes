@@ -1,11 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import VendasClient from '@/components/VendasClient'
 import { calcularBeneficio } from '@/lib/commission'
-
-const VENDEDORES_CONFIG = [
-  { nome: 'Robson Brito',  limiteDesconto: 0.15 },
-  { nome: 'Regiane Brito', limiteDesconto: 0.12 },
-]
+import { VENDEDORES_CONFIG } from '@/lib/config'
 
 export default async function VendasPage() {
   const supabase = await createClient()
@@ -16,7 +12,6 @@ export default async function VendasPage() {
 
   const beneficioMes = calcularBeneficio(mes, ano)
 
-  // Buscar todas as vendas do mês (qualquer vendedor_nome)
   const { data: vendas } = await supabase
     .from('vendas')
     .select('*')
@@ -24,7 +19,6 @@ export default async function VendasPage() {
     .eq('ano', ano)
     .order('numero', { ascending: true })
 
-  // Buscar próximo número global
   const { data: ultimaVenda } = await supabase
     .from('vendas')
     .select('numero')
@@ -34,11 +28,10 @@ export default async function VendasPage() {
 
   const proximoNumero = (ultimaVenda?.numero ?? 114) + 1
 
-  // Montar vendedores com parâmetros padrão (sem depender de profiles)
   const vendedores = VENDEDORES_CONFIG.map(v => ({
     nome: v.nome,
     parametros: {
-      meta: 60000,
+      meta: v.meta,
       salario_base: 1620,
       beneficio: beneficioMes,
       perc_comissao_base: 0.02,

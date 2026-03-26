@@ -1,11 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { calcularBeneficio } from '@/lib/commission'
+import { VENDEDORES_CONFIG } from '@/lib/config'
 import DashboardClient from '@/components/DashboardWrapper'
-
-const VENDEDORES_CONFIG = [
-  { nome: 'Robson Brito',  limiteDesconto: 0.15 },
-  { nome: 'Regiane Brito', limiteDesconto: 0.12 },
-]
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -27,7 +23,7 @@ export default async function DashboardPage() {
     nome: v.nome,
     vendas: (todasVendas ?? []).filter(x => x.vendedor_nome === v.nome),
     parametros: {
-      meta: 60000,
+      meta: v.meta,
       salario_base: 1620,
       beneficio: beneficioMes,
       perc_comissao_base: 0.02,

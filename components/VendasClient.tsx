@@ -7,10 +7,7 @@ import { Plus, Trash2, TrendingUp, CheckCircle, XCircle, AlertTriangle, User, Pe
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
-const VENDEDORES_CONFIG = [
-  { nome: 'Robson Brito',  limiteDesconto: 0.15 },
-  { nome: 'Regiane Brito', limiteDesconto: 0.12 },
-]
+import { VENDEDORES_CONFIG } from '@/lib/config'
 
 interface Venda {
   id: number
