@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { calcularComissaoVenda, calcularMes, formatCurrency, formatPercent } from '@/lib/commission'
-import { Plus, Trash2, TrendingUp, CheckCircle, XCircle, AlertTriangle, User } from 'lucide-react'
+import { Plus, Trash2, TrendingUp, CheckCircle, XCircle, AlertTriangle, User, Pencil, X } from 'lucide-react'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
@@ -44,11 +44,12 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
 }) {
   const [vendas, setVendas] = useState<Venda[]>(vendasIniciais)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [filtroVendedor, setFiltroVendedor] = useState<string>('todos')
 
-  const [form, setForm] = useState({
+  const formVazio = {
     vendedor_nome: VENDEDORES_CONFIG[0].nome,
     cliente: '',
     canal: 'LOJA',
@@ -56,7 +57,39 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
     valor_venda: '',
     preco_tabela: '',
     numero_pedido: '',
-  })
+  }
+
+  const [form, setForm] = useState(formVazio)
+
+  function abrirNovo() {
+    setEditingId(null)
+    setForm(formVazio)
+    setErro('')
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function abrirEdicao(v: Venda) {
+    setEditingId(v.id)
+    setForm({
+      vendedor_nome: v.vendedor_nome ?? VENDEDORES_CONFIG[0].nome,
+      cliente: v.cliente,
+      canal: v.canal,
+      data_venda: v.data_venda,
+      valor_venda: String(v.valor_venda),
+      preco_tabela: String(v.preco_tabela),
+      numero_pedido: v.numero_pedido ?? '',
+    })
+    setErro('')
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function fecharForm() {
+    setShowForm(false)
+    setEditingId(null)
+    setErro('')
+  }
 
   const hoje = new Date()
   const diaAtual = hoje.getMonth() + 1 === mes && hoje.getFullYear() === ano ? hoje.getDate() : 30
@@ -107,26 +140,32 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
     setLoading(true)
     setErro('')
 
+    const payload = {
+      id: editingId,
+      vendedor_nome: form.vendedor_nome,
+      cliente: form.cliente,
+      canal: form.canal,
+      data_venda: form.data_venda,
+      valor_venda: parseFloat(form.valor_venda),
+      preco_tabela: parseFloat(form.preco_tabela),
+      numero_pedido: form.numero_pedido || null,
+      numero: proximoNumero + vendas.length,
+    }
+
     const res = await fetch('/api/vendas', {
-      method: 'POST',
+      method: editingId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        vendedor_nome: form.vendedor_nome,
-        cliente: form.cliente,
-        canal: form.canal,
-        data_venda: form.data_venda,
-        valor_venda: parseFloat(form.valor_venda),
-        preco_tabela: parseFloat(form.preco_tabela),
-        numero_pedido: form.numero_pedido || null,
-        numero: proximoNumero + vendas.length,
-      }),
+      body: JSON.stringify(payload),
     })
 
     if (res.ok) {
-      const nova = await res.json()
-      setVendas(prev => [...prev, nova])
-      setForm(p => ({ ...p, cliente: '', canal: 'LOJA', data_venda: format(new Date(), 'yyyy-MM-dd'), valor_venda: '', preco_tabela: '', numero_pedido: '' }))
-      setShowForm(false)
+      const salva = await res.json()
+      if (editingId) {
+        setVendas(prev => prev.map(v => v.id === editingId ? salva : v))
+      } else {
+        setVendas(prev => [...prev, salva])
+      }
+      fecharForm()
     } else {
       const data = await res.json()
       setErro(data.error ?? 'Erro ao salvar venda.')
@@ -143,16 +182,27 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Vendas</h1>
-        <p className="text-gray-500 text-sm">{MESES[mes-1]} de {ano} — {vendas.length} registro{vendas.length !== 1 ? 's' : ''}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Vendas</h1>
+          <p className="text-gray-500 text-sm">{MESES[mes-1]} de {ano} — {vendas.length} registro{vendas.length !== 1 ? 's' : ''}</p>
+        </div>
+        <button
+          onClick={showForm ? fecharForm : abrirNovo}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white font-semibold text-sm transition-all active:scale-95"
+          style={{ background: showForm ? 'rgba(220,38,38,0.5)' : 'rgba(37,99,235,0.5)', backdropFilter: 'blur(4px)' }}
+        >
+          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {showForm ? 'Fechar' : '+ Venda'}
+        </button>
       </div>
 
       {/* Formulário de Nova Venda */}
       {showForm && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Plus className="w-4 h-4 text-blue-600" /> Registrar Nova Venda
+            {editingId ? <Pencil className="w-4 h-4 text-blue-600" /> : <Plus className="w-4 h-4 text-blue-600" />}
+            {editingId ? 'Editar Venda' : 'Registrar Nova Venda'}
           </h2>
 
           {erro && (
@@ -288,11 +338,11 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                 className="px-6 py-2.5 rounded-xl text-white font-semibold text-sm disabled:opacity-60"
                 style={{ background: '#2563eb' }}
               >
-                {loading ? 'Salvando...' : 'Salvar Venda'}
+                {loading ? 'Salvando...' : editingId ? 'Salvar Edição' : 'Salvar Venda'}
               </button>
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={fecharForm}
                 className="px-6 py-2.5 rounded-xl font-semibold text-sm border border-gray-200 text-gray-600 hover:bg-gray-50"
               >
                 Cancelar
@@ -386,12 +436,22 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
                         {formatCurrency(calc.totalComissaoVenda)}
                       </td>
                       <td className="px-3 py-3">
-                        <button
-                          onClick={() => handleDelete(v.id)}
-                          className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => abrirEdicao(v)}
+                            className="text-blue-400 hover:text-blue-600 transition-colors p-1 rounded-lg hover:bg-blue-50"
+                            title="Editar"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(v.id)}
+                            className="text-red-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -483,19 +543,6 @@ export default function VendasClient({ vendasIniciais, vendedores, mes, ano, pro
         )}
       </div>
 
-      {/* Espaço extra no final para o FAB não sobrepor o conteúdo */}
-      <div className="h-20" />
-
-      {/* Botão flutuante Nova Venda */}
-      <button
-        onClick={() => { setShowForm(!showForm); setErro(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-        className="fixed bottom-6 right-4 z-50 flex items-center gap-1.5 px-4 py-3 rounded-2xl text-white font-bold shadow-xl text-sm transition-all active:scale-95"
-        style={{ background: showForm ? '#dc2626' : '#2563eb' }}
-        aria-label="Nova Venda"
-      >
-        <Plus className="w-5 h-5" />
-        {showForm ? 'Fechar' : 'Venda'}
-      </button>
     </div>
   )
 }

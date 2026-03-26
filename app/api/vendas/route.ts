@@ -60,6 +60,31 @@ export async function POST(request: Request) {
   return NextResponse.json(data)
 }
 
+export async function PUT(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  const body = await request.json()
+  const { id, cliente, canal, data_venda, valor_venda, preco_tabela, numero_pedido, vendedor_nome } = body
+  if (!id) return NextResponse.json({ error: 'ID obrigatório' }, { status: 400 })
+
+  const [anoStr, mesStr] = data_venda.split('-')
+  const mes = parseInt(mesStr)
+  const ano = parseInt(anoStr)
+
+  const { data, error } = await supabase
+    .from('vendas')
+    .update({ cliente, canal, data_venda, valor_venda, preco_tabela, numero_pedido: numero_pedido || null, mes, ano, vendedor_nome })
+    .eq('id', id)
+    .eq('vendedor_id', user.id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
+}
+
 export async function DELETE(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
