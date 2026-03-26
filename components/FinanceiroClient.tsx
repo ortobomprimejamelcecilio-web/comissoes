@@ -63,6 +63,11 @@ export default function FinanceiroClient() {
   const [mes, setMes]     = useState(now.getMonth() + 1)
   const [ano, setAno]     = useState(now.getFullYear())
 
+  // Mês de referência das ENTRADAS = mês anterior ao selecionado
+  // (vendas de março → recebimento em abril)
+  const mesRef = mes === 1 ? 12 : mes - 1
+  const anoRef = mes === 1 ? ano - 1 : ano
+
   // ── Dados
   const [saidas, setSaidas]   = useState<Saida[]>([])
   const [vendas, setVendas]   = useState<VendaRaw[]>([])
@@ -98,28 +103,26 @@ export default function FinanceiroClient() {
 
   useEffect(() => {
     fetchSaidas(mes, ano)
-    fetchVendas(mes, ano)
-  }, [mes, ano, fetchSaidas, fetchVendas])
+    fetchVendas(mesRef, anoRef)   // entradas = vendas do mês anterior
+  }, [mes, ano, mesRef, anoRef, fetchSaidas, fetchVendas])
 
-  // ─── Cálculo contracheques
+  // ─── Cálculo contracheques (baseado nas vendas do mês ANTERIOR)
   const contracheques = useMemo(() => {
-    const hoje = new Date()
-    const diaAtual = hoje.getMonth()+1 === mes && hoje.getFullYear() === ano
-      ? hoje.getDate() : new Date(ano, mes, 0).getDate()
-    const diasNoMes = new Date(ano, mes, 0).getDate()
-    const beneficio = calcularBeneficio(mes, ano)
+    // mesRef é sempre um mês completo (fechado), então usamos o último dia
+    const diasNoMes = new Date(anoRef, mesRef, 0).getDate()
+    const beneficio = calcularBeneficio(mesRef, anoRef)
 
     return VENDEDORES_CONFIG.map(vc => {
       const vendasV = vendas
         .filter(v => v.vendedor_nome === vc.nome)
         .map(v => ({ valor: v.valor_venda, precoTabela: v.preco_tabela }))
-      const r = calcularMes(vendasV, diaAtual, diasNoMes, {
+      const r = calcularMes(vendasV, diasNoMes, diasNoMes, {
         meta: vc.meta, salario_base: 1620, beneficio, limite_desconto: vc.limiteDesconto,
       })
       return { nome: vc.nome, liquido: r.totalLiquido, bruto: r.totalBruto, inss: r.inss,
                vendas: r.totalVendas, comissoes: r.totalComissoes, beneficio, r }
     })
-  }, [vendas, mes, ano])
+  }, [vendas, mesRef, anoRef])
 
   // ─── Totais
   const totalEntradas = useMemo(() => contracheques.reduce((s, c) => s + c.liquido, 0), [contracheques])
@@ -194,7 +197,8 @@ export default function FinanceiroClient() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Financeiro</h1>
           <p className="text-sm" style={{ color: 'var(--text-3)' }}>
-            Controle de entradas e saídas do casal
+            Despesas de <strong style={{ color: 'var(--text-2)' }}>{MESES[mes-1]}/{ano}</strong>
+            {' '}· Entradas do contracheque de <strong style={{ color: 'var(--accent-fg)' }}>{MESES[mesRef-1]}/{anoRef}</strong>
           </p>
         </div>
 
@@ -253,7 +257,7 @@ export default function FinanceiroClient() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--text-3)' }}>
-                  Saldo — {MESES[mes-1]} {ano}
+                  Saldo — {MESES[mes-1]}/{ano}
                 </p>
                 <p className="text-4xl font-black" style={{ color: saldo >= 0 ? 'var(--accent-fg)' : 'var(--danger)' }}>
                   {formatCurrency(saldo)}
@@ -315,7 +319,7 @@ export default function FinanceiroClient() {
               </div>
               <p className="text-2xl font-bold" style={{ color: 'var(--accent-fg)' }}>{formatCurrency(totalEntradas)}</p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-4)' }}>
-                {contracheques.length} contracheque{contracheques.length !== 1 ? 's' : ''}
+                Vendas de {MESES[mesRef-1]}/{anoRef}
               </p>
               <div className="mt-3 space-y-1.5">
                 {contracheques.map(c => (
@@ -334,7 +338,7 @@ export default function FinanceiroClient() {
               </div>
               <p className="text-2xl font-bold" style={{ color: 'var(--danger)' }}>{formatCurrency(totalSaidas)}</p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-4)' }}>
-                {saidas.length} despesa{saidas.length !== 1 ? 's' : ''} registrada{saidas.length !== 1 ? 's' : ''}
+                {saidas.length} despesa{saidas.length !== 1 ? 's' : ''} em {MESES[mes-1]}/{ano}
               </p>
               <button onClick={() => setView('saidas')}
                 className="mt-3 text-xs font-semibold flex items-center gap-1 transition-colors"
@@ -640,11 +644,19 @@ export default function FinanceiroClient() {
           {/* Total entradas */}
           <div className="rounded-2xl p-5"
             style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.03))', border: '1px solid var(--accent)' }}>
-            <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--text-3)' }}>
-              Total de Entradas — {MESES[mes-1]}/{ano}
-            </p>
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>
+                Entradas — recebimento em {MESES[mes-1]}/{ano}
+              </p>
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                style={{ background: 'var(--accent-dim)', color: 'var(--accent-fg)', border: '1px solid var(--accent)' }}>
+                Vendas de {MESES[mesRef-1]}/{anoRef}
+              </span>
+            </div>
             <p className="text-3xl font-black" style={{ color: 'var(--accent-fg)' }}>{formatCurrency(totalEntradas)}</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>Soma dos salários líquidos do casal</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
+              Contracheques de Robson e Regiane — base: vendas de {MESES[mesRef-1]}/{anoRef}
+            </p>
           </div>
 
           {/* Contracheques detalhados */}
@@ -665,7 +677,9 @@ export default function FinanceiroClient() {
                     </div>
                     <div>
                       <p className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{c.nome}</p>
-                      <p className="text-xs" style={{ color: 'var(--text-3)' }}>{MESES[mes-1]}/{ano}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-3)' }}>
+                        Vendas de {MESES[mesRef-1]}/{anoRef} → Recebimento {MESES[mes-1]}/{ano}
+                      </p>
                     </div>
                   </div>
 
