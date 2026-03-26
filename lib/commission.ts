@@ -91,7 +91,7 @@ export function calcularComissaoVenda(
 // ============================================================
 export interface VendaCalc {
   valor: number
-  precoTabela: number
+  precoTabela: number   // necessário para calcular desconto ponderado do mês
 }
 
 export interface ResultadoMensal {
@@ -137,13 +137,18 @@ export function calcularMes(
   const totalVendas = vendas.reduce((s, v) => s + v.valor, 0)
 
   let totalComissaoBase = 0
-  let totalComissaoExtraDesconto = 0
 
   for (const v of vendas) {
-    const calc = calcularComissaoVenda(v.valor, v.precoTabela, limiteDesconto)
-    totalComissaoBase += calc.comissaoBase
-    totalComissaoExtraDesconto += calc.comissaoExtraDesconto
+    totalComissaoBase += v.valor * COMISSAO_BASE
   }
+
+  // Extra 1% calculado sobre o TOTAL VENDIDO quando o desconto ponderado
+  // (média ponderada de todas as vendas) estiver abaixo do limite
+  const totalTabela = vendas.reduce((s, v) => s + v.precoTabela, 0)
+  const descontoPonderado = totalTabela > 0 ? (totalTabela - totalVendas) / totalTabela : 0
+  const totalComissaoExtraDesconto = descontoPonderado < limiteDesconto
+    ? totalVendas * COMISSAO_EXTRA_DESCONTO
+    : 0
 
   const premiacao = totalVendas >= metaMensal ? totalVendas * COMISSAO_PREMIACAO : 0
   const totalComissoes = totalComissaoBase + totalComissaoExtraDesconto + premiacao
