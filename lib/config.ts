@@ -5,14 +5,14 @@
 
 export const VENDEDORES_CONFIG = [
   {
-    nome: 'Robson Brito',
-    limiteDesconto: 0.15,   // 15%
-    meta: 60000,            // R$ 60.000
-  },
-  {
     nome: 'Regiane Brito',
     limiteDesconto: 0.12,   // 12%
     meta: 80000,            // R$ 80.000
+  },
+  {
+    nome: 'Robson Brito',
+    limiteDesconto: 0.15,   // 15%
+    meta: 60000,            // R$ 60.000
   },
 ] as const
 
