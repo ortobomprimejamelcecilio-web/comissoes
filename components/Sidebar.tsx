@@ -5,12 +5,13 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, ShoppingCart, UserPlus,
-  Settings, FileText, LogOut, TrendingUp,
+  Settings, FileText, LogOut, TrendingUp, FileBarChart2,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
   { href: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard },
   { href: '/vendas',       label: 'Vendas',       icon: ShoppingCart    },
+  { href: '/relatorio',    label: 'Relatório',    icon: FileBarChart2   },
   { href: '/contracheque', label: 'Contracheque', icon: FileText        },
   { href: '/cadastro',     label: 'Cadastro',     icon: UserPlus        },
   { href: '/parametros',   label: 'Parâmetros',   icon: Settings        },
