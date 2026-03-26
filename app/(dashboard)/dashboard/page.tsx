@@ -1,9 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { calcularBeneficio } from '@/lib/commission'
-import dynamic from 'next/dynamic'
-
-// SSR desabilitado pois recharts não suporta server-side rendering
-const DashboardClient = dynamic(() => import('@/components/DashboardClient'), { ssr: false })
+import DashboardClient from '@/components/DashboardWrapper'
 
 const VENDEDORES_CONFIG = [
   { nome: 'Robson Brito',  limiteDesconto: 0.15 },
