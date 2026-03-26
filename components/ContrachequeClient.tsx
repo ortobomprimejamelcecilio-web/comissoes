@@ -44,10 +44,11 @@ export default function ContrachequeClient({ vendedores, mes, ano }: {
     return calcularMes(vendasCalc, diaAtual, diasNoMes, atual.parametros)
   }, [atual, diaAtual, diasNoMes])
 
-  const baseINSS = atual.parametros.salario_base + resultado.totalComissoes
-  const inss = calcularINSS(baseINSS)
-  const totalBruto = atual.parametros.salario_base + atual.parametros.beneficio + resultado.totalComissoes
-  const totalLiquido = totalBruto - inss
+  // baseINSS = salário_base + comissão_base (2%) apenas — benefício e extras NÃO entram
+  const baseINSS = resultado.baseINSS
+  const inss = resultado.inss
+  const totalBruto = resultado.totalBruto
+  const totalLiquido = resultado.totalLiquido
   const aliquotaEfetiva = baseINSS > 0 ? inss / baseINSS : 0
 
   function handlePrint() {
@@ -215,7 +216,7 @@ export default function ContrachequeClient({ vendedores, mes, ano }: {
 
             <div>
               <RubricaRow
-                desc={`INSS Progressivo — Base: ${formatCurrency(baseINSS)} | Alíquota efetiva: ${formatPercent(aliquotaEfetiva)}`}
+                desc={`INSS Progressivo — Base: salário + comissão base = ${formatCurrency(baseINSS)} | Alíq. efetiva: ${formatPercent(aliquotaEfetiva)}`}
                 valor={formatCurrency(inss)}
                 tipo="desconto"
               />

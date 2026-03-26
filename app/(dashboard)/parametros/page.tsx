@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { formatCurrency, calcularDiasUteis, calcularBeneficio } from '@/lib/commission'
+import { formatCurrency, calcularDiasUteis, calcularBeneficio, getFeriadosNacionais } from '@/lib/commission'
 import { VENDEDORES_CONFIG } from '@/lib/config'
-import { Settings, TrendingUp, User, Percent, ChevronDown } from 'lucide-react'
+import { Settings, Percent, ChevronDown, CalendarX } from 'lucide-react'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
@@ -17,6 +17,41 @@ export default function ParametrosPage() {
 
   const diasUteis = useMemo(() => calcularDiasUteis(mes, ano), [mes, ano])
   const beneficio  = useMemo(() => calcularBeneficio(mes, ano), [mes, ano])
+
+  // Feriados nacionais que caem em seg–sáb no mês selecionado
+  const feriadosDoMes = useMemo(() => {
+    const totalDias = new Date(ano, mes, 0).getDate()
+    const feriados = getFeriadosNacionais(ano)
+    const nomesFeriados: Record<string, string> = {
+      '01-01': 'Confraternização Universal',
+      '04-21': 'Tiradentes',
+      '05-01': 'Dia do Trabalho',
+      '09-07': 'Independência do Brasil',
+      '10-12': 'Nossa Senhora Aparecida',
+      '11-02': 'Finados',
+      '11-15': 'Proclamação da República',
+      '11-20': 'Consciência Negra',
+      '12-25': 'Natal',
+    }
+    const dias: { dia: number; key: string; nome: string }[] = []
+    for (let dia = 1; dia <= totalDias; dia++) {
+      const m = String(mes).padStart(2, '0')
+      const d = String(dia).padStart(2, '0')
+      const key = `${m}-${d}`
+      const diaSemana = new Date(ano, mes - 1, dia).getDay()
+      if (feriados.has(key) && diaSemana !== 0) {
+        // Páscoa é domingo (não aparece), Sexta-Santa e Corpus Christi têm nome dinâmico
+        let nome = nomesFeriados[key] ?? 'Feriado Nacional'
+        // Verifica se é Sexta-Santa ou Corpus Christi
+        if (!nomesFeriados[key]) {
+          if (diaSemana === 5) nome = 'Sexta-Feira Santa'
+          else nome = 'Corpus Christi'
+        }
+        dias.push({ dia, key, nome })
+      }
+    }
+    return dias
+  }, [mes, ano])
 
   const inputSel = {
     background: 'var(--surface-3)',
@@ -87,9 +122,9 @@ export default function ParametrosPage() {
               <ParamRow label="Limite de desconto" value={`${Math.round(v.limiteDesconto * 100)}%`} />
               <ParamRow label="Salário base" value={formatCurrency(SALARIO_BASE)} />
               <ParamRow
-                label={`Benefício — ${mes}/${ano}`}
+                label={`Benefício — ${MESES[mes-1]}/${ano}`}
                 value={formatCurrency(beneficio)}
-                sub={`${diasUteis} dias × R$ ${VALOR_DIA_UTIL.toFixed(2)}`}
+                sub={`${diasUteis} dias úteis × R$ ${VALOR_DIA_UTIL.toFixed(2)}`}
               />
             </div>
 
@@ -157,8 +192,9 @@ export default function ParametrosPage() {
             <li>• Comissão base de <strong style={{ color: 'var(--text-1)' }}>2%</strong> sobre todo valor vendido</li>
             <li>• <strong style={{ color: 'var(--accent-fg)' }}>+1%</strong> extra em vendas com desconto abaixo do limite individual</li>
             <li>• <strong style={{ color: 'var(--accent-fg)' }}>+1%</strong> de premiação se total de vendas ≥ meta do mês</li>
-            <li>• INSS progressivo calculado sobre salário base + comissões</li>
-            <li>• Benefício ({diasUteis} dias úteis × R$ {VALOR_DIA_UTIL.toFixed(2)}) não entra na base INSS</li>
+            <li>• <strong style={{ color: 'var(--danger)' }}>INSS</strong> incide <strong style={{ color: 'var(--text-1)' }}>apenas</strong> sobre salário base + comissão base (2%)</li>
+            <li>• Benefício, bônus de desconto e premiação são <strong style={{ color: 'var(--accent-fg)' }}>extras</strong> — fora da base INSS</li>
+            <li>• Dias úteis: <strong style={{ color: 'var(--text-1)' }}>seg a sáb</strong>, excluindo feriados nacionais</li>
           </ul>
         </div>
       </div>
@@ -203,6 +239,46 @@ export default function ParametrosPage() {
         <p className="text-xs mt-3" style={{ color: 'var(--text-3)' }}>
           Cálculo progressivo: cada faixa de salário é tributada separadamente pela sua alíquota.
         </p>
+      </div>
+
+      {/* Feriados do mês */}
+      <div
+        className="rounded-2xl p-5"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <CalendarX className="w-4 h-4" style={{ color: 'var(--warn)' }} />
+          <h2 className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
+            Feriados Nacionais — {MESES[mes-1]}/{ano}
+          </h2>
+        </div>
+
+        {feriadosDoMes.length === 0 ? (
+          <div
+            className="rounded-xl px-4 py-3 text-sm"
+            style={{ background: 'var(--surface-2)', color: 'var(--text-3)' }}
+          >
+            Nenhum feriado nacional em {MESES[mes-1]}/{ano} — todos os dias úteis (seg–sáb) contam.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {feriadosDoMes.map(f => (
+              <div
+                key={f.key}
+                className="flex items-center justify-between px-4 py-2.5 rounded-xl"
+                style={{ background: 'var(--warn-dim)', border: '1px solid var(--warn)' }}
+              >
+                <span className="text-sm" style={{ color: 'var(--text-2)' }}>{f.nome}</span>
+                <span className="text-sm font-semibold" style={{ color: 'var(--warn)' }}>
+                  {String(f.dia).padStart(2, '0')}/{String(mes).padStart(2, '0')}
+                </span>
+              </div>
+            ))}
+            <p className="text-xs pt-1" style={{ color: 'var(--text-3)' }}>
+              {feriadosDoMes.length} feriado{feriadosDoMes.length > 1 ? 's' : ''} descontado{feriadosDoMes.length > 1 ? 's' : ''} — restam <strong style={{ color: 'var(--text-2)' }}>{diasUteis} dias úteis</strong> para o benefício.
+            </p>
+          </div>
+        )}
       </div>
 
     </div>

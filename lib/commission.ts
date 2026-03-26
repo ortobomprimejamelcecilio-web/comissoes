@@ -11,24 +11,97 @@ export const SALARIO_BASE = 1620           // Salário mínimo 2026
 export const VALOR_DIA_UTIL = 17.20        // R$ 17,20 por dia útil (benefício)
 
 // ============================================================
+// FERIADOS NACIONAIS BRASILEIROS
+// ============================================================
+
+/** Algoritmo de Meeus/Jones/Butcher para calcular a data da Páscoa */
+function calcularPascoa(ano: number): Date {
+  const a = ano % 19
+  const b = Math.floor(ano / 100)
+  const c = ano % 100
+  const d = Math.floor(b / 4)
+  const e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4)
+  const k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const mes = Math.floor((h + l - 7 * m + 114) / 31)
+  const dia = ((h + l - 7 * m + 114) % 31) + 1
+  return new Date(ano, mes - 1, dia)
+}
+
+function somarDias(data: Date, dias: number): Date {
+  const d = new Date(data)
+  d.setDate(d.getDate() + dias)
+  return d
+}
+
+function toKey(data: Date): string {
+  const m = String(data.getMonth() + 1).padStart(2, '0')
+  const d = String(data.getDate()).padStart(2, '0')
+  return `${m}-${d}`
+}
+
+/**
+ * Retorna o conjunto de feriados nacionais do ano no formato "MM-DD".
+ * Inclui feriados fixos e móveis (Sexta-Santa, Corpus Christi).
+ */
+export function getFeriadosNacionais(ano: number): Set<string> {
+  const feriados = new Set<string>()
+
+  // Feriados fixos
+  const fixos = [
+    '01-01', // Confraternização Universal
+    '04-21', // Tiradentes
+    '05-01', // Dia do Trabalho
+    '09-07', // Independência
+    '10-12', // Nossa Senhora Aparecida
+    '11-02', // Finados
+    '11-15', // Proclamação da República
+    '11-20', // Consciência Negra (nacional desde 2024)
+    '12-25', // Natal
+  ]
+  fixos.forEach(f => feriados.add(f))
+
+  // Feriados móveis (baseados na Páscoa)
+  const pascoa = calcularPascoa(ano)
+  const sextaSanta  = somarDias(pascoa, -2)  // Sexta-Feira Santa
+  const corpusChristi = somarDias(pascoa, 60) // Corpus Christi
+
+  feriados.add(toKey(sextaSanta))
+  feriados.add(toKey(corpusChristi))
+
+  return feriados
+}
+
+// ============================================================
 // DIAS ÚTEIS E BENEFÍCIO MENSAL
 // ============================================================
 
 /**
- * Conta os dias úteis (seg–sex) de um mês/ano.
- * Não inclui feriados nacionais (apenas fins de semana).
+ * Conta dias úteis (seg–sáb) do mês, excluindo feriados nacionais brasileiros.
+ * Domingo nunca é dia útil.
  */
 export function calcularDiasUteis(mes: number, ano: number): number {
   const totalDias = new Date(ano, mes, 0).getDate()
+  const feriados = getFeriadosNacionais(ano)
   let diasUteis = 0
+
   for (let dia = 1; dia <= totalDias; dia++) {
     const diaSemana = new Date(ano, mes - 1, dia).getDay()
-    if (diaSemana !== 0 && diaSemana !== 6) diasUteis++
+    if (diaSemana === 0) continue // domingo: sempre fora
+
+    const key = `${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+    if (!feriados.has(key)) diasUteis++
   }
+
   return diasUteis
 }
 
-/** Benefício do mês = dias úteis × R$ 8,60 */
+/** Benefício do mês = dias úteis (seg–sáb, sem feriados) × R$ 17,20 */
 export function calcularBeneficio(mes: number, ano: number): number {
   return Math.round(calcularDiasUteis(mes, ano) * VALOR_DIA_UTIL * 100) / 100
 }
@@ -91,7 +164,7 @@ export function calcularComissaoVenda(
 // ============================================================
 export interface VendaCalc {
   valor: number
-  precoTabela: number   // necessário para calcular desconto ponderado do mês
+  precoTabela: number
 }
 
 export interface ResultadoMensal {
@@ -109,8 +182,9 @@ export interface ResultadoMensal {
   // Contracheque
   salarioBase: number
   beneficio: number
-  totalBruto: number
+  baseINSS: number       // salário_base + comissão_base (2%) apenas
   inss: number
+  totalBruto: number
   totalLiquido: number
 
   // Projeção
@@ -136,14 +210,9 @@ export function calcularMes(
 
   const totalVendas = vendas.reduce((s, v) => s + v.valor, 0)
 
-  let totalComissaoBase = 0
+  const totalComissaoBase = vendas.reduce((s, v) => s + v.valor * COMISSAO_BASE, 0)
 
-  for (const v of vendas) {
-    totalComissaoBase += v.valor * COMISSAO_BASE
-  }
-
-  // Extra 1% calculado sobre o TOTAL VENDIDO quando o desconto ponderado
-  // (média ponderada de todas as vendas) estiver abaixo do limite
+  // Extra 1%: calculado sobre o total vendido quando desconto ponderado < limite
   const totalTabela = vendas.reduce((s, v) => s + v.precoTabela, 0)
   const descontoPonderado = totalTabela > 0 ? (totalTabela - totalVendas) / totalTabela : 0
   const totalComissaoExtraDesconto = descontoPonderado < limiteDesconto
@@ -156,17 +225,19 @@ export function calcularMes(
   const salarioBase = params.salario_base ?? SALARIO_BASE
   const beneficio = params.beneficio ?? 0
 
-  // INSS incide sobre salário + comissões (não sobre benefício)
-  const baseINSS = salarioBase + totalComissoes
+  // ─── INSS incide APENAS sobre salário base + comissão base (2%) ───
+  // Benefício, bônus de desconto (+1%) e premiação (+1%) são extras
+  // e NÃO entram na base de cálculo do INSS.
+  const baseINSS = salarioBase + totalComissaoBase
   const inss = calcularINSS(baseINSS)
 
+  // Total bruto = tudo (salário + benefício + todas as comissões)
   const totalBruto = salarioBase + beneficio + totalComissoes
   const totalLiquido = totalBruto - inss
 
   const percAtingimento = totalVendas / metaMensal
   const faltaMeta = Math.max(0, metaMensal - totalVendas)
 
-  // Projeção: ritmo atual × dias restantes
   const projecaoMes = diaAtual > 0 ? (totalVendas / diaAtual) * totalDiasMes : 0
   const percProjecao = projecaoMes / metaMensal
 
@@ -181,8 +252,9 @@ export function calcularMes(
     totalComissoes,
     salarioBase,
     beneficio,
-    totalBruto,
+    baseINSS,
     inss,
+    totalBruto,
     totalLiquido,
     projecaoMes,
     percProjecao,
