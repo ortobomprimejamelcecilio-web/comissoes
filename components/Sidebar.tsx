@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  LayoutDashboard, ShoppingCart, UserPlus,
+  LayoutDashboard, ShoppingCart, Landmark,
   Settings, FileText, LogOut, TrendingUp, FileBarChart2,
 } from 'lucide-react'
 
@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { href: '/vendas',       label: 'Vendas',       icon: ShoppingCart    },
   { href: '/relatorio',    label: 'Relatório',    icon: FileBarChart2   },
   { href: '/contracheque', label: 'Contracheque', icon: FileText        },
-  { href: '/cadastro',     label: 'Cadastro',     icon: UserPlus        },
+  { href: '/financeiro',   label: 'Financeiro',   icon: Landmark        },
   { href: '/parametros',   label: 'Parâmetros',   icon: Settings        },
 ]
 
