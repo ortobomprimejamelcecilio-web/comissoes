@@ -35,104 +35,80 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
       ───────────────────────────────────────── */}
       <aside
         className="hidden lg:flex w-64 flex-col h-full flex-shrink-0"
-        style={{ background: '#2A3F54' }}
+        style={{
+          background: 'var(--bg)',
+          borderRight: '1px solid var(--border)',
+        }}
       >
         {/* Logo */}
-        <div
-          className="flex items-center gap-3 px-5 py-5"
-          style={{ background: '#233140', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-        >
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: '#1ABB9C' }}
-          >
-            <TrendingUp className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-sm leading-tight text-white">ComissãoSys</p>
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Gestão de Comissões</p>
-          </div>
-        </div>
-
-        {/* Profile */}
-        <div
-          className="px-4 py-4"
-          style={{ background: '#1F2D3D', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-        >
+        <div className="p-6" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
-              style={{ background: '#1ABB9C' }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'var(--accent)' }}
             >
-              {userName.charAt(0).toUpperCase()}
+              <TrendingUp className="w-5 h-5 text-white" />
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{userName}</p>
-              <p className="text-xs capitalize" style={{ color: 'rgba(255,255,255,0.4)' }}>{userRole}</p>
+            <div>
+              <p className="font-bold text-sm leading-tight" style={{ color: 'var(--text-1)' }}>ComissãoSys</p>
+              <p className="text-xs" style={{ color: 'var(--text-3)' }}>v1.0</p>
             </div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-3 overflow-y-auto">
-          <p
-            className="px-5 pt-2 pb-2 text-[10px] font-bold uppercase tracking-widest"
-            style={{ color: 'rgba(255,255,255,0.28)' }}
-          >
-            Menu Principal
-          </p>
+        <nav className="flex-1 p-4 space-y-1">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
             return (
               <Link
                 key={href}
                 href={href}
-                className="flex items-center gap-3 px-5 py-3 text-sm font-medium transition-all"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
                 style={{
-                  color: active ? '#FFFFFF' : 'rgba(255,255,255,0.60)',
-                  background: active ? 'rgba(26,187,156,0.12)' : 'transparent',
-                  borderLeft: active ? '3px solid #1ABB9C' : '3px solid transparent',
+                  background: active ? 'var(--accent-dim)' : 'transparent',
+                  color: active ? 'var(--accent-fg)' : 'var(--text-2)',
                 }}
                 onMouseEnter={e => {
-                  if (!active) {
-                    (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'
-                    ;(e.currentTarget as HTMLElement).style.color = '#FFFFFF'
-                  }
+                  if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'
                 }}
                 onMouseLeave={e => {
-                  if (!active) {
-                    (e.currentTarget as HTMLElement).style.background = 'transparent'
-                    ;(e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.60)'
-                  }
+                  if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'
                 }}
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
+                <Icon className="w-5 h-5 flex-shrink-0" />
                 <span>{label}</span>
               </Link>
             )
           })}
         </nav>
 
-        {/* Logout */}
-        <div
-          className="px-4 py-4"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-        >
+        {/* Usuário + Logout */}
+        <div className="p-4" style={{ borderTop: '1px solid var(--border)' }}>
+          <div
+            className="flex items-center gap-3 px-3 py-2 rounded-xl mb-2"
+            style={{ background: 'var(--surface-2)' }}
+          >
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
+              style={{ background: 'var(--accent)' }}
+            >
+              {userName.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate" style={{ color: 'var(--text-1)' }}>{userName}</p>
+              <p className="text-xs capitalize" style={{ color: 'var(--text-3)' }}>{userRole}</p>
+            </div>
+          </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
-            style={{ color: 'rgba(255,255,255,0.45)' }}
-            onMouseEnter={e => {
-              ;(e.currentTarget as HTMLElement).style.background = 'rgba(231,76,60,0.12)'
-              ;(e.currentTarget as HTMLElement).style.color = '#E74C3C'
-            }}
-            onMouseLeave={e => {
-              ;(e.currentTarget as HTMLElement).style.background = 'transparent'
-              ;(e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.45)'
-            }}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all"
+            style={{ color: 'var(--danger)' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
           >
             <LogOut className="w-4 h-4" />
-            Sair do Sistema
+            Sair
           </button>
         </div>
       </aside>
@@ -143,8 +119,8 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
       <nav
         className="lg:hidden fixed bottom-0 left-0 right-0 z-50"
         style={{
-          background: '#2A3F54',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
@@ -156,15 +132,18 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
                 key={href}
                 href={href}
                 className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] font-medium transition-colors relative"
-                style={{ color: active ? '#1ABB9C' : 'rgba(255,255,255,0.45)' }}
+                style={{ color: active ? 'var(--accent)' : 'var(--text-3)' }}
               >
                 {active && (
                   <span
-                    className="absolute top-0 left-1/2 -translate-x-1/2"
-                    style={{ width: 24, height: 2, background: '#1ABB9C', borderRadius: '0 0 3px 3px' }}
+                    className="absolute top-0 left-1/2 -translate-x-1/2 rounded-full"
+                    style={{ width: 20, height: 2, background: 'var(--accent)' }}
                   />
                 )}
-                <Icon className="w-5 h-5 mb-0.5" strokeWidth={active ? 2.5 : 1.8} />
+                <Icon
+                  className="w-5 h-5 mb-0.5"
+                  strokeWidth={active ? 2.5 : 1.8}
+                />
                 <span className="leading-none">{label}</span>
               </Link>
             )
@@ -177,24 +156,23 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
         className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4"
         style={{
           height: '56px',
-          background: '#2A3F54',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
         }}
       >
         <div className="flex items-center gap-2">
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: '#1ABB9C' }}
+            style={{ background: 'var(--accent)' }}
           >
             <TrendingUp className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold text-sm text-white">ComissãoSys</span>
+          <span className="font-bold text-sm" style={{ color: 'var(--text-1)' }}>ComissãoSys</span>
         </div>
         <button
           onClick={handleLogout}
           className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white"
-          style={{ background: '#1ABB9C' }}
+          style={{ background: 'var(--accent)' }}
           title={`${userName} — Sair`}
         >
           {userName.charAt(0).toUpperCase()}
