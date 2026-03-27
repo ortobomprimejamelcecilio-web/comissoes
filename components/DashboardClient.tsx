@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line, CartesianGrid, Legend,
 } from 'recharts'
 import { calcularMes, calcularComissaoVenda, formatCurrency, formatPercent } from '@/lib/commission'
 import { DollarSign, Target, AlertCircle, Award } from 'lucide-react'
@@ -80,6 +81,11 @@ export default function DashboardClient({
         </div>
       ) : (
         <VendedorPanel dados={vendedores[0]} diaAtual={diaAtual} diasNoMes={diasNoMes} mes={mes} ano={ano} />
+      )}
+
+      {/* Gráfico comparativo — só aparece no modo admin */}
+      {modo === 'admin' && vendedores.length === 2 && (
+        <GraficoComparativo vendedores={vendedores} diasNoMes={diasNoMes} diaAtual={diaAtual} />
       )}
 
       {/* Total Geral — só aparece no modo admin */}
@@ -286,6 +292,94 @@ function VendedorPanel({ dados, diaAtual, diasNoMes, mes, ano }: {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ============================================================
+// GRÁFICO COMPARATIVO — ACUMULADO DIA A DIA
+// ============================================================
+const CORES_VENDEDOR = ['#F97316', '#38BDF8']
+
+function GraficoComparativo({ vendedores, diasNoMes, diaAtual }: {
+  vendedores: DadosVendedor[]
+  diasNoMes: number
+  diaAtual: number
+}) {
+  const data = useMemo(() => {
+    return Array.from({ length: diaAtual }, (_, i) => {
+      const dia = i + 1
+      const ponto: Record<string, number> = { dia }
+      for (const v of vendedores) {
+        const acumulado = v.vendas
+          .filter(venda => {
+            const dStr = venda.data_venda.split('-')[2]
+            return parseInt(dStr) <= dia
+          })
+          .reduce((s, venda) => s + venda.valor_venda, 0)
+        ponto[v.nome.split(' ')[0]] = acumulado
+      }
+      return ponto
+    })
+  }, [vendedores, diaAtual])
+
+  const nomes = vendedores.map(v => v.nome.split(' ')[0])
+
+  return (
+    <div
+      className="rounded-2xl p-5"
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+    >
+      <div className="mb-5">
+        <h2 className="font-bold text-lg" style={{ color: 'var(--text-1)' }}>Desempenho Diário</h2>
+        <p className="text-sm" style={{ color: 'var(--text-3)' }}>
+          Acumulado de vendas dia a dia — comparativo entre vendedores
+        </p>
+      </div>
+      <ResponsiveContainer width="100%" height={240}>
+        <LineChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+          <CartesianGrid stroke="var(--border)" strokeDasharray="4 4" vertical={false} />
+          <XAxis
+            dataKey="dia"
+            tick={{ fontSize: 11, fill: 'var(--text-3)' }}
+            axisLine={false}
+            tickLine={false}
+            label={{ value: 'dia', position: 'insideRight', offset: -4, fontSize: 11, fill: 'var(--text-3)' }}
+          />
+          <YAxis
+            tickFormatter={v => `${(v / 1000).toFixed(0)}k`}
+            tick={{ fontSize: 11, fill: 'var(--text-3)' }}
+            axisLine={false}
+            tickLine={false}
+            width={42}
+          />
+          <Tooltip
+            formatter={(v, name) => [formatCurrency(v as number), name]}
+            labelFormatter={l => `Dia ${l}`}
+            contentStyle={{
+              background: 'var(--surface-3)',
+              border: '1px solid var(--border-2)',
+              borderRadius: '10px',
+              color: 'var(--text-1)',
+              fontSize: '12px',
+            }}
+          />
+          <Legend
+            wrapperStyle={{ fontSize: 12, color: 'var(--text-2)', paddingTop: 12 }}
+          />
+          {nomes.map((nome, i) => (
+            <Line
+              key={nome}
+              type="monotone"
+              dataKey={nome}
+              stroke={CORES_VENDEDOR[i]}
+              strokeWidth={2.5}
+              dot={false}
+              activeDot={{ r: 5, strokeWidth: 0, fill: CORES_VENDEDOR[i] }}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   )
 }
