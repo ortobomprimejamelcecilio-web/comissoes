@@ -9,12 +9,11 @@ import {
   Plus, Pencil, Trash2, X, ChevronDown, Loader2,
   Home, Car, ShoppingCart, Heart, GraduationCap,
   Smile, MoreHorizontal, TrendingUp, TrendingDown,
-  Wallet, CheckCircle, RefreshCw, CreditCard,
-  CalendarClock, AlertTriangle, Zap, Calendar,
+  Wallet, CheckCircle, RefreshCw, CreditCard, AlertTriangle,
 } from 'lucide-react'
 
 // ─── Tipos ────────────────────────────────────────────────────
-type View = 'dashboard' | 'saidas' | 'entradas' | 'cartao'
+type View = 'dashboard' | 'saidas' | 'entradas'
 
 interface Saida {
   id: number; descricao: string; categoria: string
@@ -62,39 +61,6 @@ const inp = {
   width: '100%',
 } as const
 
-// ─── Ciclo do cartão ─────────────────────────────────────────
-function calcularCicloCartao(hoje: Date) {
-  const dia = hoje.getDate()
-  const m   = hoje.getMonth() + 1
-  const a   = hoje.getFullYear()
-
-  let inicioData: Date
-  let fechamentoData: Date
-  let pagamentoData: Date
-
-  if (dia <= 10) {
-    const mA = m === 1 ? 12 : m - 1
-    const aA = m === 1 ? a - 1 : a
-    inicioData     = new Date(aA, mA - 1, 11)
-    fechamentoData = new Date(a,  m - 1,  10)
-    pagamentoData  = new Date(a,  m - 1,  18)
-  } else {
-    const mP = m === 12 ? 1 : m + 1
-    const aP = m === 12 ? a + 1 : a
-    inicioData     = new Date(a,  m - 1,  11)
-    fechamentoData = new Date(aP, mP - 1, 10)
-    pagamentoData  = new Date(aP, mP - 1, 18)
-  }
-
-  const MS = 86400000
-  const diasAteFechamento = Math.max(0, Math.ceil((fechamentoData.getTime() - hoje.getTime()) / MS))
-  const diasAtePagamento  = Math.max(0, Math.ceil((pagamentoData.getTime()  - hoje.getTime()) / MS))
-  const totalDiasCiclo    = Math.ceil((fechamentoData.getTime() - inicioData.getTime()) / MS) + 1
-  const diasPassados      = Math.max(1, Math.ceil((hoje.getTime() - inicioData.getTime()) / MS))
-
-  return { inicioData, fechamentoData, pagamentoData, diasAteFechamento, diasAtePagamento, totalDiasCiclo, diasPassados }
-}
-
 // ─── Componente principal ─────────────────────────────────────
 export default function FinanceiroClient() {
   const now = new Date()
@@ -123,12 +89,9 @@ export default function FinanceiroClient() {
   const [erroForm, setErroForm] = useState('')
   const [msgRecorrente, setMsgRecorrente] = useState('')
 
-  // ── Form cartão
+  // ── Form cartão (lançamento rápido na aba Saídas)
   const [formC,    setFormC]    = useState({ descricao: '', valor: '' })
   const [savingC,  setSavingC]  = useState(false)
-
-  // ── Ciclo do cartão (calculado uma vez)
-  const ciclo = useMemo(() => calcularCicloCartao(now), []) // eslint-disable-line
 
   // ─── Fetch saídas
   const fetchSaidas = useCallback(async (m: number, a: number) => {
@@ -180,22 +143,29 @@ export default function FinanceiroClient() {
   }, [vendas, mesRef, anoRef])
 
   // ─── Totais
-  const totalEntradas = useMemo(() => contracheques.reduce((s, c) => s + c.liquido, 0), [contracheques])
-  const totalSaidas   = useMemo(() => saidas.reduce((s, x) => s + x.valor, 0), [saidas])
-  const saldo         = totalEntradas - totalSaidas
-  const percGasto     = totalEntradas > 0 ? totalSaidas / totalEntradas : 0
+  const totalEntradas       = useMemo(() => contracheques.reduce((s, c) => s + c.liquido, 0), [contracheques])
+  const totalSaidasDespesas = useMemo(() => saidas.reduce((s, x) => s + x.valor, 0), [saidas])
+  // Cartão do mês anterior entra nas saídas do mês atual (pagamento dia 18)
+  const totalSaidas         = totalSaidasDespesas + totalCartaoRef
+  const saldo               = totalEntradas - totalSaidas
+  const percGasto           = totalEntradas > 0 ? totalSaidas / totalEntradas : 0
 
-  // ─── Cartão — gastos do ciclo atual
-  const gastosNoCiclo = useMemo(() =>
+  // ─── Cartão — fatura do mês anterior (já inclusa nas saídas deste mês)
+  const gastosRefMes = useMemo(() =>
     gastos.filter(g => {
       const d = new Date(g.data_gasto + 'T12:00:00')
-      return d >= ciclo.inicioData && d <= ciclo.fechamentoData
-    }), [gastos, ciclo])
+      return d.getFullYear() === anoRef && d.getMonth() + 1 === mesRef
+    }), [gastos, mesRef, anoRef])
 
-  const totalCartao   = gastosNoCiclo.reduce((s, g) => s + g.valor, 0)
-  const mediaDiaria   = ciclo.diasPassados > 0 ? totalCartao / ciclo.diasPassados : 0
-  const projecaoFechamento = mediaDiaria * ciclo.totalDiasCiclo
-  const percCiclo     = ciclo.totalDiasCiclo > 0 ? (ciclo.diasPassados / ciclo.totalDiasCiclo) : 0
+  // ─── Cartão — gastos do mês atual (serão cobrados no próximo mês)
+  const gastosAtualMes = useMemo(() =>
+    gastos.filter(g => {
+      const d = new Date(g.data_gasto + 'T12:00:00')
+      return d.getFullYear() === ano && d.getMonth() + 1 === mes
+    }), [gastos, mes, ano])
+
+  const totalCartaoRef   = useMemo(() => gastosRefMes.reduce((s, g) => s + g.valor, 0), [gastosRefMes])
+  const totalCartaoAtual = useMemo(() => gastosAtualMes.reduce((s, g) => s + g.valor, 0), [gastosAtualMes])
 
   // ─── Breakdown por categoria
   const porCategoria = useMemo(() => {
@@ -339,28 +309,15 @@ export default function FinanceiroClient() {
           { key: 'dashboard', label: 'Visão Geral', Icon: LayoutDashboard },
           { key: 'saidas',    label: 'Saídas',       Icon: ArrowDownCircle  },
           { key: 'entradas',  label: 'Entradas',     Icon: ArrowUpCircle    },
-          { key: 'cartao',    label: 'Cartão',       Icon: CreditCard       },
         ] as const).map(({ key, label, Icon }) => (
           <button key={key} onClick={() => setView(key)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
             style={{
-              background: view === key
-                ? key === 'cartao' ? 'rgba(124,58,237,0.2)' : 'var(--accent-dim)'
-                : 'var(--surface-2)',
-              color: view === key
-                ? key === 'cartao' ? '#A78BFA' : 'var(--accent-fg)'
-                : 'var(--text-2)',
-              border: view === key
-                ? key === 'cartao' ? '1px solid rgba(124,58,237,0.4)' : '1px solid var(--accent)'
-                : '1px solid transparent',
+              background: view === key ? 'var(--accent-dim)' : 'var(--surface-2)',
+              color:      view === key ? 'var(--accent-fg)'  : 'var(--text-2)',
+              border:     view === key ? '1px solid var(--accent)' : '1px solid transparent',
             }}>
             <Icon className="w-4 h-4" />{label}
-            {key === 'cartao' && totalCartao > 0 && (
-              <span className="text-xs px-1.5 py-0.5 rounded-full font-bold"
-                style={{ background: 'rgba(124,58,237,0.3)', color: '#A78BFA' }}>
-                {formatCurrency(totalCartao)}
-              </span>
-            )}
           </button>
         ))}
       </div>
@@ -459,21 +416,26 @@ export default function FinanceiroClient() {
               </button>
             </div>
 
-            {/* Mini cartão */}
+            {/* Cartão integrado */}
             <div className="rounded-2xl p-5 col-span-2 sm:col-span-1"
-              style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.3) 0%, rgba(76,29,149,0.2) 100%)', border: '1px solid rgba(124,58,237,0.3)' }}>
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="flex items-center gap-2 mb-3">
-                <CreditCard className="w-5 h-5" style={{ color: '#A78BFA' }} />
-                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'rgba(167,139,250,0.7)' }}>Cartão</span>
+                <CreditCard className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>Cartão</span>
               </div>
-              <p className="text-2xl font-bold" style={{ color: '#A78BFA' }}>{formatCurrency(totalCartao)}</p>
-              <p className="text-xs mt-1" style={{ color: 'rgba(167,139,250,0.6)' }}>
-                Fatura em aberto · fecha dia 10
-              </p>
-              <button onClick={() => setView('cartao')}
-                className="mt-3 text-xs font-semibold flex items-center gap-1"
-                style={{ color: '#A78BFA' }}>
-                <Zap className="w-3 h-3" /> Ver fatura
+              {/* Fatura anterior — já inclusa nas saídas */}
+              <div className="mb-3">
+                <p className="text-xs" style={{ color: 'var(--text-4)' }}>Fatura {MESES[mesRef-1]} — incluída nas saídas</p>
+                <p className="text-xl font-bold" style={{ color: 'var(--danger)' }}>{formatCurrency(totalCartaoRef)}</p>
+              </div>
+              {/* Corrente — vai para o próximo mês */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+                <p className="text-xs" style={{ color: 'var(--text-4)' }}>Em aberto ({MESES[mes-1]}) → próx. mês</p>
+                <p className="text-lg font-semibold" style={{ color: 'var(--warn)' }}>{formatCurrency(totalCartaoAtual)}</p>
+              </div>
+              <button onClick={() => setView('saidas')}
+                className="mt-3 text-xs font-semibold" style={{ color: 'var(--accent-fg)' }}>
+                Lançar gasto no cartão →
               </button>
             </div>
           </div>
@@ -793,6 +755,28 @@ export default function FinanceiroClient() {
                     })}
                   </tbody>
                   <tfoot>
+                    {totalCartaoRef > 0 && (
+                      <tr style={{ background: 'var(--surface-2)', borderTop: '1px solid var(--border)' }}>
+                        <td className="px-3 py-2 w-8">
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                            style={{ background: 'rgba(14,165,233,0.15)' }}>
+                            <CreditCard className="w-3.5 h-3.5" style={{ color: 'var(--accent-fg)' }} />
+                          </div>
+                        </td>
+                        <td className="px-3 py-2" style={{ color: 'var(--text-2)' }}>
+                          Fatura Cartão — {MESES[mesRef-1]}/{anoRef}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                            style={{ background: 'var(--accent-dim)', color: 'var(--accent-fg)' }}>Cartão</span>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'var(--text-3)' }}>Venc. dia 18</td>
+                        <td className="px-3 py-2 font-semibold whitespace-nowrap" style={{ color: 'var(--danger)' }}>
+                          − {formatCurrency(totalCartaoRef)}
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    )}
                     <tr style={{ background: 'var(--surface-3)', borderTop: '2px solid var(--border-2)' }}>
                       <td colSpan={4} className="px-3 py-3 font-bold text-xs uppercase" style={{ color: 'var(--text-1)' }}>
                         TOTAL — {MESES[mes-1]}/{ano}
@@ -807,6 +791,72 @@ export default function FinanceiroClient() {
               </div>
             </div>
           )}
+
+          {/* ── Seção Cartão de Crédito ── */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+                <p className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
+                  Cartão — {MESES[mes-1]}/{ano}
+                </p>
+                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--warn-dim)', color: 'var(--warn)' }}>
+                  Cobrado em {MESES[mes === 12 ? 0 : mes]}/{mes === 12 ? ano + 1 : ano}
+                </span>
+              </div>
+              <span className="font-bold text-sm" style={{ color: 'var(--warn)' }}>{formatCurrency(totalCartaoAtual)}</span>
+            </div>
+            <div className="px-5 py-4" style={{ borderBottom: gastosAtualMes.length > 0 ? '1px solid var(--border)' : undefined, background: 'var(--surface-2)' }}>
+              <form onSubmit={adicionarGasto} className="flex gap-2 flex-wrap">
+                <input type="number" required min="0.01" step="0.01" placeholder="R$ Valor"
+                  value={formC.valor}
+                  onChange={e => setFormC(p => ({ ...p, valor: e.target.value }))}
+                  style={{ ...inp, width: '120px', flexShrink: 0 }} />
+                <input type="text" required placeholder="Descrição do gasto..."
+                  value={formC.descricao}
+                  onChange={e => setFormC(p => ({ ...p, descricao: e.target.value }))}
+                  style={{ ...inp, flex: 1, minWidth: '160px' }} />
+                <button type="submit" disabled={savingC}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap disabled:opacity-60"
+                  style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent)', color: 'var(--accent-fg)' }}>
+                  {savingC ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  Lançar
+                </button>
+              </form>
+            </div>
+            {gastosAtualMes.length === 0 ? (
+              <div className="px-5 py-5 text-center">
+                <p className="text-sm" style={{ color: 'var(--text-4)' }}>Nenhum gasto no cartão em {MESES[mes-1]}</p>
+              </div>
+            ) : (
+              gastosAtualMes.map(g => (
+                <div key={g.id} className="flex items-center gap-3 px-5 py-3"
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'var(--accent-dim)' }}>
+                    <CreditCard className="w-3.5 h-3.5" style={{ color: 'var(--accent-fg)' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate" style={{ color: 'var(--text-1)' }}>{g.descricao}</p>
+                    <p className="text-xs" style={{ color: 'var(--text-3)' }}>
+                      {format(new Date(g.data_gasto + 'T12:00:00'), 'dd/MM/yyyy')}
+                    </p>
+                  </div>
+                  <p className="font-semibold text-sm flex-shrink-0" style={{ color: 'var(--warn)' }}>
+                    {formatCurrency(g.valor)}
+                  </p>
+                  <button onClick={() => excluirGasto(g.id)}
+                    className="p-1 rounded-lg ml-1 flex-shrink-0" style={{ color: 'var(--text-4)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--danger)'; (e.currentTarget as HTMLElement).style.background = 'var(--danger-dim)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-4)'; (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
@@ -890,8 +940,8 @@ export default function FinanceiroClient() {
         </div>
       )}
 
-      {/* ══════════════ CARTÃO ══════════════ */}
-      {view === 'cartao' && (
+      {/* view cartão removida — integrada na aba Saídas */}
+      {false && (
         <div className="space-y-5">
 
           {/* Hero — fatura em aberto */}
