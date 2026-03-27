@@ -142,14 +142,6 @@ export default function FinanceiroClient() {
     })
   }, [vendas, mesRef, anoRef])
 
-  // ─── Totais
-  const totalEntradas       = useMemo(() => contracheques.reduce((s, c) => s + c.liquido, 0), [contracheques])
-  const totalSaidasDespesas = useMemo(() => saidas.reduce((s, x) => s + x.valor, 0), [saidas])
-  // Cartão do mês anterior entra nas saídas do mês atual (pagamento dia 18)
-  const totalSaidas         = totalSaidasDespesas + totalCartaoRef
-  const saldo               = totalEntradas - totalSaidas
-  const percGasto           = totalEntradas > 0 ? totalSaidas / totalEntradas : 0
-
   // ─── Cartão — fatura do mês anterior (já inclusa nas saídas deste mês)
   const gastosRefMes = useMemo(() =>
     gastos.filter(g => {
@@ -166,6 +158,13 @@ export default function FinanceiroClient() {
 
   const totalCartaoRef   = useMemo(() => gastosRefMes.reduce((s, g) => s + g.valor, 0), [gastosRefMes])
   const totalCartaoAtual = useMemo(() => gastosAtualMes.reduce((s, g) => s + g.valor, 0), [gastosAtualMes])
+
+  // ─── Totais (cartão do mês anterior já incluso nas saídas)
+  const totalEntradas       = useMemo(() => contracheques.reduce((s, c) => s + c.liquido, 0), [contracheques])
+  const totalSaidasDespesas = useMemo(() => saidas.reduce((s, x) => s + x.valor, 0), [saidas])
+  const totalSaidas         = totalSaidasDespesas + totalCartaoRef
+  const saldo               = totalEntradas - totalSaidas
+  const percGasto           = totalEntradas > 0 ? totalSaidas / totalEntradas : 0
 
   // ─── Breakdown por categoria
   const porCategoria = useMemo(() => {
