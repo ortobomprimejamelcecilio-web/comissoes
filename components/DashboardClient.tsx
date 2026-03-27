@@ -308,11 +308,11 @@ function VendedorPanel({ dados, diaAtual, diasNoMes, mes, ano }: {
 // ============================================================
 // GRÁFICO COMPARATIVO — ACUMULADO DIA A DIA
 // ============================================================
-const CORES_VENDEDOR = ['#00ACC1', '#C2185B']
+const CORES_VENDEDOR = ['#C2185B', '#00ACC1']
 
 const GRAD_VENDEDOR: Record<string, { grad: string; cor: string; glow: string }> = {
-  Regiane: { grad: 'linear-gradient(135deg, #1565C0 0%, #00ACC1 100%)', cor: '#00ACC1', glow: 'rgba(0,172,193,0.25)' },
-  Robson:  { grad: 'linear-gradient(135deg, #6A1B9A 0%, #C2185B 100%)', cor: '#C2185B', glow: 'rgba(194,24,91,0.22)' },
+  Regiane: { grad: 'linear-gradient(135deg, #6A1B9A 0%, #C2185B 100%)', cor: '#C2185B', glow: 'rgba(194,24,91,0.22)' },
+  Robson:  { grad: 'linear-gradient(135deg, #1565C0 0%, #00ACC1 100%)', cor: '#00ACC1', glow: 'rgba(0,172,193,0.25)' },
 }
 
 function GraficoComparativo({ vendedores, diasNoMes, diaAtual }: {
