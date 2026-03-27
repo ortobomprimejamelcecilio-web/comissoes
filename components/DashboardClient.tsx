@@ -138,29 +138,38 @@ function VendedorPanel({ dados, diaAtual, diasNoMes, mes, ano }: {
 
   const limitePerc = Math.round(parametros.limite_desconto * 100)
 
+  const primeiroNome = nome.split(' ')[0] as keyof typeof GRAD_VENDEDOR
+  const palette = GRAD_VENDEDOR[primeiroNome] ?? GRAD_VENDEDOR['Robson']
+
   return (
     <div
-      className="rounded-2xl overflow-hidden border-l-4"
+      className="rounded-2xl overflow-hidden"
       style={{
         background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderLeft: '4px solid var(--accent)',
+        border: '1px solid var(--border-2)',
+        boxShadow: `0 8px 32px ${palette.glow}`,
       }}
     >
-      {/* Cabeçalho do vendedor */}
+      {/* Cabeçalho degradê do vendedor */}
       <div
-        className="px-5 py-4 flex items-center justify-between"
-        style={{ borderBottom: '1px solid var(--border)' }}
+        className="px-5 py-5 flex items-center justify-between relative overflow-hidden"
+        style={{ background: palette.grad }}
       >
-        <div>
-          <h2 className="font-bold text-lg" style={{ color: 'var(--text-1)' }}>{nome}</h2>
-          <p className="text-xs" style={{ color: 'var(--text-3)' }}>
+        {/* Glow decorativo */}
+        <div style={{
+          position: 'absolute', inset: 0, opacity: 0.15,
+          background: 'radial-gradient(ellipse 60% 80% at 80% 50%, white, transparent)',
+          pointerEvents: 'none',
+        }} />
+        <div style={{ position: 'relative' }}>
+          <h2 className="font-bold text-lg text-white drop-shadow">{nome}</h2>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.75)' }}>
             {vendas.length} venda{vendas.length !== 1 ? 's' : ''} · limite desconto {limitePerc}%
           </p>
         </div>
         <span
-          className="text-xs font-semibold px-2.5 py-1 rounded-full"
-          style={{ background: 'var(--accent-dim)', color: 'var(--accent-fg)' }}
+          className="text-sm font-bold px-3 py-1 rounded-full relative"
+          style={{ background: 'rgba(255,255,255,0.20)', color: 'white', backdropFilter: 'blur(8px)' }}
         >
           {formatPercent(percAtingimento)} da meta
         </span>
@@ -299,7 +308,12 @@ function VendedorPanel({ dados, diaAtual, diasNoMes, mes, ano }: {
 // ============================================================
 // GRÁFICO COMPARATIVO — ACUMULADO DIA A DIA
 // ============================================================
-const CORES_VENDEDOR = ['#F97316', '#38BDF8']
+const CORES_VENDEDOR = ['#00ACC1', '#C2185B']
+
+const GRAD_VENDEDOR: Record<string, { grad: string; cor: string; glow: string }> = {
+  Regiane: { grad: 'linear-gradient(135deg, #1565C0 0%, #00ACC1 100%)', cor: '#00ACC1', glow: 'rgba(0,172,193,0.25)' },
+  Robson:  { grad: 'linear-gradient(135deg, #6A1B9A 0%, #C2185B 100%)', cor: '#C2185B', glow: 'rgba(194,24,91,0.22)' },
+}
 
 function GraficoComparativo({ vendedores, diasNoMes, diaAtual }: {
   vendedores: DadosVendedor[]
@@ -414,25 +428,32 @@ function TotalGeralPanel({ vendedores, diaAtual, diasNoMes }: {
 
   return (
     <div
-      className="rounded-2xl p-5"
+      className="rounded-2xl overflow-hidden"
       style={{
         background: 'var(--surface)',
-        borderTop: '2px solid var(--accent)',
+        border: '1px solid var(--border-2)',
+        boxShadow: '0 8px 32px rgba(0,77,64,0.25)',
       }}
     >
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="font-bold text-lg" style={{ color: 'var(--text-1)' }}>Total Geral</h2>
-          <p className="text-sm" style={{ color: 'var(--text-3)' }}>
-            Robson + Regiane · {totais.totalVendasCount} vendas
-          </p>
-        </div>
+      {/* Header degradê teal */}
+      <div className="px-5 py-4 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #004D40 0%, #0EA5E9 100%)' }}>
+        <div style={{
+          position: 'absolute', inset: 0, opacity: 0.15,
+          background: 'radial-gradient(ellipse 60% 80% at 80% 50%, white, transparent)',
+          pointerEvents: 'none',
+        }} />
+        <h2 className="font-bold text-lg text-white relative">Total Geral</h2>
+        <p className="text-sm relative" style={{ color: 'rgba(255,255,255,0.75)' }}>
+          Robson + Regiane · {totais.totalVendasCount} vendas
+        </p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <TotalCard label="Total Vendido" value={formatCurrency(totais.totalVendas)} />
-        <TotalCard label="Total Comissões" value={formatCurrency(totais.totalComissoes)} />
-        <TotalCard label="Total Bruto" value={formatCurrency(totais.totalBruto)} />
-        <TotalCard label="Total Líquido" value={formatCurrency(totais.totalLiquido)} highlight />
+      <div className="p-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <TotalCard label="Total Vendido" value={formatCurrency(totais.totalVendas)} />
+          <TotalCard label="Total Comissões" value={formatCurrency(totais.totalComissoes)} />
+          <TotalCard label="Total Bruto" value={formatCurrency(totais.totalBruto)} />
+          <TotalCard label="Total Líquido" value={formatCurrency(totais.totalLiquido)} highlight />
+        </div>
       </div>
     </div>
   )
@@ -443,7 +464,8 @@ function TotalCard({ label, value, highlight }: { label: string; value: string; 
     <div
       className="rounded-xl p-3"
       style={{
-        background: highlight ? 'var(--accent-dim)' : 'var(--surface-2)',
+        background: highlight ? 'linear-gradient(135deg, rgba(0,77,64,0.5) 0%, rgba(14,165,233,0.2) 100%)' : 'var(--surface-2)',
+        border: highlight ? '1px solid rgba(14,165,233,0.25)' : '1px solid var(--border)',
       }}
     >
       <p className="text-xs mb-1" style={{ color: 'var(--text-3)' }}>{label}</p>
@@ -466,13 +488,20 @@ function KPICard({ label, value, icon, valueColor, sub }: {
   return (
     <div
       className="rounded-xl p-3"
-      style={{ background: 'var(--surface-2)' }}
+      style={{
+        background: 'var(--surface-2)',
+        border: '1px solid var(--border)',
+      }}
     >
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>{label}</p>
         <div
-          className="w-6 h-6 rounded-lg flex items-center justify-center"
-          style={{ background: 'var(--accent-dim)', color: 'var(--accent-fg)' }}
+          className="w-7 h-7 rounded-lg flex items-center justify-center"
+          style={{
+            background: 'linear-gradient(135deg, #1565C0 0%, #00ACC1 100%)',
+            color: 'white',
+            boxShadow: '0 2px 8px rgba(0,172,193,0.3)',
+          }}
         >
           {icon}
         </div>

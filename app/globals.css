@@ -1,71 +1,76 @@
 @import "tailwindcss";
 
 :root {
-  /* Backgrounds */
-  --bg:        #09090B;
-  --surface:   #111113;
-  --surface-2: #1A1A1F;
-  --surface-3: #222228;
+  /* ── Backgrounds ── */
+  --bg:        #06091A;
+  --surface:   #0C1029;
+  --surface-2: #111535;
+  --surface-3: #1B2050;
 
-  /* Borders */
+  /* ── Borders ── */
   --border:   rgba(255,255,255,0.07);
   --border-2: rgba(255,255,255,0.13);
   --border-3: rgba(255,255,255,0.22);
 
-  /* Text */
-  --text-1: #FAFAFA;
-  --text-2: #A1A1AA;
-  --text-3: #71717A;
-  --text-4: #3F3F46;
+  /* ── Text ── */
+  --text-1: #EEF2FF;
+  --text-2: #8892B0;
+  --text-3: #525E80;
+  --text-4: #333D5C;
 
-  /* Accent — violeta elétrico */
-  --accent:     #8B5CF6;
-  --accent-2:   #7C3AED;
-  --accent-dim: rgba(139,92,246,0.12);
-  --accent-fg:  #A78BFA;
+  /* ── Accent principal — ciano elétrico ── */
+  --accent:     #0EA5E9;
+  --accent-2:   #0284C7;
+  --accent-dim: rgba(14,165,233,0.12);
+  --accent-fg:  #38BDF8;
 
-  /* States */
+  /* ── Gradientes reutilizáveis ── */
+  --grad-blue:   linear-gradient(135deg, #1565C0 0%, #00ACC1 100%);
+  --grad-purple: linear-gradient(135deg, #6A1B9A 0%, #C2185B 100%);
+  --grad-teal:   linear-gradient(135deg, #004D40 0%, #0EA5E9 100%);
+  --grad-gold:   linear-gradient(135deg, #BF360C 0%, #F59E0B 100%);
+
+  /* ── States ── */
   --warn:       #F59E0B;
   --warn-dim:   rgba(245,158,11,0.12);
   --danger:     #EF4444;
   --danger-dim: rgba(239,68,68,0.12);
   --info:       #38BDF8;
-  --info-dim:   rgba(56,189,248,0.12);
+  --info-dim:   rgba(56,189,248,0.10);
 
   --background: var(--bg);
 }
 
+/* Fundo com duplo glow — azul superior esquerdo e magenta inferior direito */
 body {
-  background: var(--bg);
-  /* Glow sutil violeta vindo do topo */
-  background-image: radial-gradient(ellipse 80% 35% at 50% -5%, rgba(139,92,246,0.10), transparent);
+  background: #06091A;
+  background-image:
+    radial-gradient(ellipse 70% 45% at 15% -5%,  rgba(21,101,192,0.20), transparent),
+    radial-gradient(ellipse 55% 40% at 88% 108%, rgba(194,24,91,0.14),   transparent);
   color: var(--text-1);
   font-family: var(--font-inter), ui-sans-serif, -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Transições globais suaves — faz o sistema sentir vivo */
+/* Transições globais suaves */
 *, *::before, *::after {
   transition-property: background-color, border-color, color, box-shadow, transform, opacity;
   transition-duration: 140ms;
   transition-timing-function: ease;
 }
 
-/* Garante que animações de layout não sofram interferência */
-.notransition, .notransition * {
-  transition: none !important;
-}
-
+/* Scrollbar discreta */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+::-webkit-scrollbar-thumb:hover { background: rgba(14,165,233,0.3); }
 
+/* Focus ring com glow ciano */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 6px;
-  box-shadow: 0 0 0 4px rgba(139,92,246,0.15);
+  box-shadow: 0 0 0 4px rgba(14,165,233,0.15);
 }
 
 ::selection { background: var(--accent-dim); color: var(--accent-fg); }

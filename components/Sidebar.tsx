@@ -36,7 +36,7 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
       <aside
         className="hidden lg:flex w-64 flex-col h-full flex-shrink-0"
         style={{
-          background: 'var(--bg)',
+          background: '#050816',
           borderRight: '1px solid var(--border)',
         }}
       >
@@ -45,7 +45,7 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--accent)' }}
+              style={{ background: 'linear-gradient(135deg, #1565C0 0%, #00ACC1 100%)', boxShadow: '0 4px 14px rgba(0,172,193,0.35)' }}
             >
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
@@ -66,11 +66,13 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
                 href={href}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
                 style={{
-                  background: active ? 'var(--accent-dim)' : 'transparent',
-                  color: active ? 'var(--accent-fg)' : 'var(--text-2)',
+                  background: active ? 'linear-gradient(135deg, rgba(21,101,192,0.28) 0%, rgba(0,172,193,0.18) 100%)' : 'transparent',
+                  color: active ? '#38BDF8' : 'var(--text-2)',
+                  borderLeft: active ? '2px solid #00ACC1' : '2px solid transparent',
+                  boxShadow: active ? '0 2px 12px rgba(0,172,193,0.12)' : 'none',
                 }}
                 onMouseEnter={e => {
-                  if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'
+                  if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'
                 }}
                 onMouseLeave={e => {
                   if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'
@@ -91,7 +93,7 @@ export default function Sidebar({ userName, userRole }: { userName: string; user
           >
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
-              style={{ background: 'var(--accent)' }}
+                  style={{ background: 'linear-gradient(135deg, #1565C0 0%, #00ACC1 100%)' }}
             >
               {userName.charAt(0).toUpperCase()}
             </div>
