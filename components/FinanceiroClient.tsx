@@ -432,7 +432,7 @@ export default function FinanceiroClient() {
               <p className="font-medium" style={{ color: 'var(--text-2)' }}>Nenhuma despesa em {MESES[mes-1]}</p>
               <button onClick={() => setView('saidas')}
                 className="mt-3 text-sm font-semibold" style={{ color: 'var(--accent-fg)' }}>
-                + Registrar primeira despesa
+                Registrar primeira despesa
               </button>
             </div>
           )}
@@ -450,9 +450,14 @@ export default function FinanceiroClient() {
             </p>
             <button onClick={showForm ? fecharForm : abrirNovo}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white font-semibold text-sm transition-all active:scale-95"
-              style={{ background: showForm ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.5)', backdropFilter: 'blur(4px)' }}>
+              style={{
+                background: showForm ? 'rgba(239,68,68,0.18)' : 'var(--accent-dim)',
+                backdropFilter: 'blur(8px)',
+                border: `1px solid ${showForm ? 'rgba(239,68,68,0.3)' : 'rgba(139,92,246,0.3)'}`,
+                color: showForm ? 'var(--danger)' : 'var(--accent-fg)',
+              }}>
               {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-              {showForm ? 'Fechar' : '+ Despesa'}
+              {showForm ? 'Fechar' : 'Despesa'}
             </button>
           </div>
 
@@ -460,7 +465,7 @@ export default function FinanceiroClient() {
           {showForm && (
             <div className="rounded-2xl p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--text-1)' }}>
-                {editId ? '✏️ Editar Despesa' : '+ Nova Despesa'}
+                {editId ? 'Editar Despesa' : 'Nova Despesa'}
               </h3>
 
               {erroForm && (
