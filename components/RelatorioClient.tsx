@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef, forwardRef } from 'react'
 import { format } from 'date-fns'
 import {
   calcularComissaoVenda, calcularMes, calcularBeneficio,
@@ -10,7 +10,7 @@ import { VENDEDORES_CONFIG } from '@/lib/config'
 import {
   Search, ShoppingCart, Wallet, TrendingUp,
   ChevronDown, Loader2, FileBarChart2,
-  CheckCircle, XCircle,
+  CheckCircle, XCircle, Download,
 } from 'lucide-react'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -56,6 +56,8 @@ const inputStyle = {
 export default function RelatorioClient() {
   const now = new Date()
   const [aba, setAba] = useState<Aba>('vendas')
+  const relatorioCardRef = useRef<HTMLDivElement>(null)
+  const [baixando, setBaixando] = useState(false)
 
   // ── VENDAS: estado ──────────────────────────────────────────
   const primeiroDoMes = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`
@@ -111,8 +113,34 @@ export default function RelatorioClient() {
       const lim = VENDEDORES_CONFIG.find(x => x.nome === v.vendedor_nome)?.limiteDesconto ?? 0.12
       return s + calcularComissaoVenda(v.valor_venda, v.preco_tabela, lim).totalComissaoVenda
     }, 0)
-    return { total, qtd, ticket, comissoes }
+    // Desconto ponderado médio
+    const totalTabela = vendasFiltradas.reduce((s, v) => s + v.preco_tabela, 0)
+    const descontoPonderado = totalTabela > 0 ? (totalTabela - total) / totalTabela : 0
+    const comissaoBase2pct = total * 0.02
+    return { total, qtd, ticket, comissoes, descontoPonderado, comissaoBase2pct }
   }, [vendasFiltradas])
+
+  async function handleBaixarJPG() {
+    if (!relatorioCardRef.current) return
+    setBaixando(true)
+    try {
+      const { toJpeg } = await import('html-to-image')
+      const nomeArquivo = filtroV === 'todos'
+        ? `relatorio-vendas-${deData}-${ateData}.jpg`
+        : `relatorio-${filtroV.toLowerCase()}-${deData}-${ateData}.jpg`
+      const dataUrl = await toJpeg(relatorioCardRef.current, {
+        quality: 0.97,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+      })
+      const link = document.createElement('a')
+      link.download = nomeArquivo
+      link.href = dataUrl
+      link.click()
+    } finally {
+      setBaixando(false)
+    }
+  }
 
   // ── RECEBIMENTOS: cálculos ──────────────────────────────────
   const mesesRange = useMemo(() =>
@@ -259,8 +287,44 @@ export default function RelatorioClient() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <CardResumo label="Total Vendido"   valor={formatCurrency(resumoVendas.total)}    sub={`${resumoVendas.qtd} venda${resumoVendas.qtd !== 1 ? 's' : ''}`} accent />
                 <CardResumo label="Ticket Médio"    valor={formatCurrency(resumoVendas.ticket)}   />
-                <CardResumo label="Total Comissões" valor={formatCurrency(resumoVendas.comissoes)} />
-                <CardResumo label="Registros"       valor={String(resumoVendas.qtd)} sub="no período" />
+                <CardResumo label="Comissão Base (2%)" valor={formatCurrency(resumoVendas.comissaoBase2pct)} />
+                <CardResumo label="% Desconto Médio" valor={formatPercent(resumoVendas.descontoPonderado)} sub="desconto ponderado" />
+              </div>
+
+              {/* Botão download relatório */}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleBaixarJPG}
+                  disabled={baixando || vendasFiltradas.length === 0}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-50"
+                  style={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border-2)',
+                    color: 'var(--text-1)',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--surface)'}
+                >
+                  {baixando
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Download className="w-4 h-4" />
+                  }
+                  Baixar Relatório JPG
+                </button>
+              </div>
+
+              {/* Card oculto para geração do JPG */}
+              <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none' }}>
+                <CardRelatorioJPG
+                  ref={relatorioCardRef}
+                  vendedor={filtroV === 'todos' ? 'Todos os vendedores' : filtroV}
+                  periodo={`${fmtDate(deData)} a ${fmtDate(ateData)}`}
+                  totalVendido={resumoVendas.total}
+                  comissaoBase={resumoVendas.comissaoBase2pct}
+                  descontoPonderado={resumoVendas.descontoPonderado}
+                  qtdVendas={resumoVendas.qtd}
+                />
               </div>
 
               {/* Tabela */}
@@ -616,3 +680,174 @@ function CardResumo({ label, valor, sub, accent, danger }: {
     </div>
   )
 }
+
+// ── Card de Relatório para exportação JPG ─────────────────────
+interface CardRelatorioJPGProps {
+  vendedor: string
+  periodo: string
+  totalVendido: number
+  comissaoBase: number
+  descontoPonderado: number
+  qtdVendas: number
+}
+
+const CardRelatorioJPG = forwardRef<HTMLDivElement, CardRelatorioJPGProps>(
+  function CardRelatorioJPG(
+    { vendedor, periodo, totalVendido, comissaoBase, descontoPonderado, qtdVendas },
+    ref
+  ) {
+    const agora = format(new Date(), "dd/MM/yyyy 'às' HH:mm")
+    return (
+      <div
+        ref={ref}
+        style={{
+          width: 520,
+          background: '#ffffff',
+          borderRadius: 24,
+          overflow: 'hidden',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          boxShadow: '0 4px 32px rgba(0,0,0,0.10)',
+        }}
+      >
+        {/* Cabeçalho */}
+        <div style={{
+          background: 'linear-gradient(135deg, #111827 0%, #1f2937 100%)',
+          padding: '28px 32px 24px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <span style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 2,
+              textTransform: 'uppercase',
+              color: '#6b7280',
+            }}>
+              Relatório de Vendas
+            </span>
+            <span style={{
+              fontSize: 10,
+              color: '#6b7280',
+            }}>
+              {agora}
+            </span>
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#ffffff', marginBottom: 4 }}>
+            {vendedor}
+          </div>
+          <div style={{ fontSize: 13, color: '#9ca3af' }}>
+            {periodo} · {qtdVendas} venda{qtdVendas !== 1 ? 's' : ''}
+          </div>
+        </div>
+
+        {/* Corpo */}
+        <div style={{ padding: '28px 32px 32px', background: '#f9fafb' }}>
+          {/* Linha divisória */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Total Vendido */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 16,
+              padding: '20px 24px',
+              border: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
+                  Total Vendido
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#111827', lineHeight: 1 }}>
+                  {formatCurrency(totalVendido)}
+                </div>
+              </div>
+              <div style={{
+                width: 48, height: 48, borderRadius: 14,
+                background: 'rgba(16,185,129,0.10)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                    stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            </div>
+
+            {/* Linha com dois cards */}
+            <div style={{ display: 'flex', gap: 12 }}>
+
+              {/* Comissão Base */}
+              <div style={{
+                flex: 1,
+                background: '#ffffff',
+                borderRadius: 16,
+                padding: '18px 20px',
+                border: '1px solid #e5e7eb',
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                  Comissão Base
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#111827', lineHeight: 1, marginBottom: 4 }}>
+                  {formatCurrency(comissaoBase)}
+                </div>
+                <div style={{
+                  display: 'inline-block',
+                  background: 'rgba(16,185,129,0.10)',
+                  color: '#059669',
+                  borderRadius: 20,
+                  padding: '2px 10px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}>
+                  2% sobre vendas
+                </div>
+              </div>
+
+              {/* % Desconto */}
+              <div style={{
+                flex: 1,
+                background: '#ffffff',
+                borderRadius: 16,
+                padding: '18px 20px',
+                border: '1px solid #e5e7eb',
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#9ca3af', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                  Desconto Atingido
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#111827', lineHeight: 1, marginBottom: 4 }}>
+                  {formatPercent(descontoPonderado)}
+                </div>
+                <div style={{
+                  display: 'inline-block',
+                  background: 'rgba(99,102,241,0.10)',
+                  color: '#6366f1',
+                  borderRadius: 20,
+                  padding: '2px 10px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}>
+                  médio ponderado
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Rodapé */}
+          <div style={{
+            marginTop: 20,
+            paddingTop: 16,
+            borderTop: '1px solid #e5e7eb',
+            textAlign: 'center',
+            fontSize: 10,
+            color: '#d1d5db',
+            letterSpacing: 0.5,
+          }}>
+            PRIME ORTOBOM · Sistema de Comissões
+          </div>
+        </div>
+      </div>
+    )
+  }
+)
